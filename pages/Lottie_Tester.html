@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Animation inspector — .lottie &amp; .json state machine viewer</title>
+<meta name="description" content="Load any .lottie or Lottie .json file, preview it, and drive its state machine." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #16171B;
+    --panel: #1D1F24;
+    --panel-line: rgba(236,234,228,0.09);
+    --ink: #ECEAE4;
+    --ink-soft: #9B988F;
+    --ink-faint: #6C6A63;
+    --accent: #5FC9A8;
+    --accent-dim: rgba(95,201,168,0.14);
+    --warn: #E0A542;
+    --warn-dim: rgba(224,165,66,0.14);
+    --radius: 8px;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{ margin:0; padding:0; background: var(--bg); color: var(--ink); height:100%; }
+
+  body{
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+
+  code, .mono{ font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+
+  header{
+    padding: 1.1rem 1.4rem;
+    border-bottom: 1px solid var(--panel-line);
+    display:flex;
+    align-items:baseline;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  header h1{
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  header p{
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+  }
+
+  .layout{
+    flex: 1;
+    display:grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
+    gap: 1px;
+    background: var(--panel-line);
+  }
+
+  @media (max-width: 860px){
+    .layout{ grid-template-columns: 1fr; }
+  }
+
+  .stage-col, .side-col{
+    background: var(--bg);
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+  }
+
+  .file-bar{
+    margin: 1.2rem 1.2rem 0;
+    display:flex;
+    align-items:center;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+  }
+
+  .file-bar-hint{
+    font-size: 0.82rem;
+    color: var(--ink-faint);
+  }
+
+  .click-hint{
+    position:absolute;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    margin:0;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    background: rgba(22,23,27,0.72);
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 200ms ease;
+  }
+
+  .click-hint.visible{ opacity: 1; }
+
+  .stage{
+    position: relative;
+    flex:1;
+    margin: 1.2rem;
+    margin-top: 0.9rem;
+    margin-bottom: 0.6rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--panel-line);
+    background-image:
+      linear-gradient(45deg, #232529 25%, transparent 25%),
+      linear-gradient(-45deg, #232529 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #232529 75%),
+      linear-gradient(-45deg, transparent 75%, #232529 75%);
+    background-size: 22px 22px;
+    background-position: 0 0, 0 11px, 11px -11px, -11px 0px;
+    background-color: #1A1B1F;
+    min-height: 280px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+
+  canvas{
+    width: 100%;
+    height: 100%;
+    display:block;
+  }
+
+  .dropzone{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    transition: background 150ms ease, border-color 150ms ease;
+    border: 1px dashed transparent;
+    pointer-events: none;
+  }
+
+  .dropzone.empty{
+    background: rgba(0,0,0,0.15);
+  }
+
+  .dropzone.drag-over{
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .dropzone p{
+    margin:0;
+    color: var(--ink-soft);
+    max-width: 30ch;
+    font-size: 0.9rem;
+  }
+
+  .btn{
+    all: unset;
+    cursor:pointer;
+    background: var(--accent);
+    color: #0F1613;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.55rem 1.1rem;
+    border-radius: 999px;
+  }
+
+  .btn:hover{ filter: brightness(1.08); }
+
+  .btn.secondary{
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--panel-line);
+    padding: 0.5rem 1rem;
+  }
+
+  .btn.secondary:hover{ border-color: var(--ink-faint); }
+
+  .btn:disabled{
+    opacity: 0.4;
+    cursor: default;
+    filter: none;
+  }
+
+  .btn-row{ display:flex; gap: 0.6rem; flex-wrap: wrap; align-items:center; }
+
+  input[type="file"]{ display:none; }
+
+  .transport{
+    margin: 0 1.2rem 1.2rem;
+    display:flex;
+    align-items:center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  .transport label{ display:flex; align-items:center; gap: 0.4rem; }
+
+  .file-summary{
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    display:none;
+    align-items:center;
+    gap: 0.5rem;
+  }
+
+  .file-summary.visible{ display:inline-flex; }
+
+  .file-summary .badge{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 5px;
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .error-banner{
+    margin: 0 1.2rem 0.9rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: var(--radius);
+    background: var(--warn-dim);
+    color: var(--warn);
+    font-size: 0.85rem;
+    display:none;
+  }
+
+  .error-banner.visible{ display:block; }
+
+  .side-col{ overflow-y:auto; }
+
+  section.panel{
+    padding: 1.2rem 1.4rem;
+    border-bottom: 1px solid var(--panel-line);
+  }
+
+  section.panel h2{
+    font-size: 0.78rem;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ink-soft);
+    margin: 0 0 0.85rem;
+    font-weight: 600;
+  }
+
+  .kv{
+    display:flex;
+    justify-content:space-between;
+    gap: 1rem;
+    padding: 0.3rem 0;
+    font-size: 0.85rem;
+  }
+
+  .kv span{ color: var(--ink-soft); }
+
+  .kv code{
+    color: var(--ink);
+    font-size: 0.8rem;
+    text-align: right;
+    word-break: break-word;
+  }
+
+  .empty{ color: var(--ink-faint); font-size: 0.85rem; margin: 0; }
+
+  select{
+    width: 100%;
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--panel-line);
+    border-radius: 6px;
+    padding: 0.5rem 0.6rem;
+    font-family: inherit;
+    font-size: 0.85rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .sm-state-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom: 0.8rem;
+  }
+
+  .sm-state-row .state-name{
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  .status-pill{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 5px;
+    background: rgba(255,255,255,0.06);
+    color: var(--ink-soft);
+  }
+
+  .status-pill.playing{ background: var(--accent-dim); color: var(--accent); }
+
+  .input-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap: 0.8rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--panel-line);
+  }
+
+  .input-row:last-child{ border-bottom: none; }
+
+  .input-name{
+    font-size: 0.82rem;
+    color: var(--ink);
+  }
+
+  .input-control{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 5px;
+    color: var(--ink);
+    padding: 0.3rem 0.5rem;
+    width: 9rem;
+    text-align: right;
+  }
+
+  .input-control[type="checkbox"]{
+    width: auto;
+    accent-color: var(--accent);
+  }
+
+  .sm-external{
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--panel-line);
+  }
+
+  .sm-external p{ margin: 0 0 0.6rem; color: var(--ink-soft); font-size: 0.82rem; }
+
+  #log{
+    list-style:none;
+    margin:0;
+    padding:0;
+    max-height: 220px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column-reverse;
+  }
+
+  #log li{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.74rem;
+    color: var(--ink-soft);
+    padding: 0.25rem 0;
+    border-bottom: 1px dashed var(--panel-line);
+  }
+
+  #log li:first-child{ border-bottom: none; }
+
+  #log li .t{ color: var(--ink-faint); margin-right: 0.5rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Animation inspector</h1>
+  <p>Load a .lottie or Lottie .json file — it renders here, and any state machine it carries becomes controllable on the right.</p>
+</header>
+
+<div class="layout">
+  <div class="stage-col">
+    <div class="file-bar">
+      <button class="btn" id="chooseBtn" type="button">Choose file</button>
+      <span class="file-bar-hint" id="fileBarHint">or drag a .lottie or .json file onto the canvas</span>
+      <span class="file-summary" id="fileSummary">
+        <span class="badge" id="fileBadge">—</span>
+        <span id="fileName"></span>
+      </span>
+    </div>
+
+    <div class="stage" id="stage">
+      <canvas id="canvas"></canvas>
+      <div class="dropzone empty" id="dropzone">
+        <p>Drop a .lottie or .json file here, or use "Choose file" above.</p>
+      </div>
+      <p class="click-hint" id="clickHint">If this animation has a state machine, try clicking it.</p>
+    </div>
+
+    <div class="error-banner" id="errorBanner"></div>
+
+    <div class="transport">
+      <div class="btn-row">
+        <button class="btn secondary" id="playBtn" type="button" disabled>Play</button>
+        <button class="btn secondary" id="pauseBtn" type="button" disabled>Pause</button>
+      </div>
+      <label><input type="checkbox" id="loopToggle" checked disabled /> Loop</label>
+    </div>
+
+    <input type="file" id="mainFileInput" accept=".lottie,.json,application/json,application/zip" />
+  </div>
+
+  <div class="side-col">
+    <section class="panel">
+      <h2>File</h2>
+      <div id="manifestPanel"><p class="empty">Nothing loaded yet.</p></div>
+    </section>
+
+    <section class="panel" id="smPanel">
+      <h2>State machine</h2>
+      <div id="smBody"><p class="empty">Load a file to see if it has one.</p></div>
+
+      <div class="sm-external" id="smExternal" hidden>
+        <p>This animation doesn't carry its own state machine. You can attach a standalone state-machine .json to drive it.</p>
+        <div class="btn-row">
+          <button class="btn secondary" id="chooseSmBtn" type="button">Choose state machine .json</button>
+        </div>
+        <input type="file" id="smFileInput" accept=".json,application/json" />
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Inputs</h2>
+      <div id="inputsList"><p class="empty">No state machine running.</p></div>
+    </section>
+
+    <section class="panel">
+      <h2>Event log</h2>
+      <ul id="log"></ul>
+    </section>
+  </div>
+</div>
+
+<script type="module">
+import { DotLottie } from "https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web/+esm";
+
+try { DotLottie.preload(); } catch (e) {}
+
+const canvas = document.getElementById('canvas');
+const stage = document.getElementById('stage');
+const dropzone = document.getElementById('dropzone');
+const clickHint = document.getElementById('clickHint');
+const chooseBtn = document.getElementById('chooseBtn');
+const mainFileInput = document.getElementById('mainFileInput');
+const fileSummary = document.getElementById('fileSummary');
+const fileBadge = document.getElementById('fileBadge');
+const fileNameEl = document.getElementById('fileName');
+const errorBanner = document.getElementById('errorBanner');
+const manifestPanel = document.getElementById('manifestPanel');
+const smBody = document.getElementById('smBody');
+const smExternal = document.getElementById('smExternal');
+const chooseSmBtn = document.getElementById('chooseSmBtn');
+const smFileInput = document.getElementById('smFileInput');
+const inputsList = document.getElementById('inputsList');
+const logEl = document.getElementById('log');
+const playBtn = document.getElementById('playBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const loopToggle = document.getElementById('loopToggle');
+
+let dotLottie = null;
+let smStatusEl = null;
+let smStateEl = null;
+
+function log(msg){
+  const li = document.createElement('li');
+  const t = document.createElement('span');
+  t.className = 't';
+  const now = new Date();
+  t.textContent = now.toLocaleTimeString([], { hour12:false });
+  li.appendChild(t);
+  li.appendChild(document.createTextNode(msg));
+  logEl.appendChild(li);
+  while (logEl.children.length > 200) logEl.removeChild(logEl.firstChild);
+}
+
+function showError(msg){
+  errorBanner.textContent = msg;
+  errorBanner.classList.add('visible');
+}
+
+function clearError(){
+  errorBanner.textContent = '';
+  errorBanner.classList.remove('visible');
+}
+
+function el(tag, props){
+  const node = document.createElement(tag);
+  if (props) Object.keys(props).forEach(k => {
+    if (k === 'text') node.textContent = props[k];
+    else node.setAttribute(k, props[k]);
+  });
+  return node;
+}
+
+function kvRow(label, value){
+  const row = el('div', { class: 'kv' });
+  const s = el('span', { text: label });
+  const c = el('code', { text: value });
+  row.appendChild(s);
+  row.appendChild(c);
+  return row;
+}
+
+let loaded = false;
+let clickHintTimer = null;
+
+function setDropzoneVisible(visible){
+  dropzone.style.display = visible ? 'flex' : 'none';
+}
+
+function flashClickHint(){
+  clickHint.classList.add('visible');
+  clearTimeout(clickHintTimer);
+  clickHintTimer = setTimeout(() => clickHint.classList.remove('visible'), 4000);
+}
+canvas.addEventListener('click', () => clickHint.classList.remove('visible'));
+
+function resizeCanvas(){
+  const rect = stage.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.round(rect.width * dpr));
+  canvas.height = Math.max(1, Math.round(rect.height * dpr));
+  if (dotLottie && typeof dotLottie.resize === 'function') {
+    try { dotLottie.resize(); } catch (e) {}
+  }
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+function destroyCurrent(){
+  if (dotLottie) {
+    try { dotLottie.stateMachineStop(); } catch (e) {}
+    try { dotLottie.destroy(); } catch (e) {}
+    dotLottie = null;
+  }
+}
+
+function resetPanels(){
+  manifestPanel.innerHTML = '';
+  manifestPanel.appendChild(el('p', { class: 'empty', text: 'Loading…' }));
+  smBody.innerHTML = '';
+  smBody.appendChild(el('p', { class: 'empty', text: 'Checking for a state machine…' }));
+  smExternal.hidden = true;
+  inputsList.innerHTML = '';
+  inputsList.appendChild(el('p', { class: 'empty', text: 'No state machine running.' }));
+  smStatusEl = null;
+  smStateEl = null;
+}
+
+function setTransportEnabled(enabled){
+  playBtn.disabled = !enabled;
+  pauseBtn.disabled = !enabled;
+  loopToggle.disabled = !enabled;
+}
+
+function bytesLookLikeZip(bytes){
+  return bytes.length > 1 && bytes[0] === 0x50 && bytes[1] === 0x4B;
+}
+
+let pendingExternalSm = null;
+
+async function loadAnimationFile(file){
+  clearError();
+  resetPanels();
+  destroyCurrent();
+  loaded = false;
+  setDropzoneVisible(false);
+  clickHint.classList.remove('visible');
+  fileSummary.classList.remove('visible');
+
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  const isZip = bytesLookLikeZip(bytes);
+  const nameLower = file.name.toLowerCase();
+
+  const opts = { canvas, autoplay: true, loop: true };
+  let kindLabel = '';
+
+  if (isZip || nameLower.endsWith('.lottie')) {
+    opts.data = buf;
+    kindLabel = '.lottie';
+  } else {
+    let text;
+    try {
+      text = new TextDecoder('utf-8').decode(buf);
+    } catch (e) {
+      showError("Couldn't read this file as text or as a .lottie archive.");
+      setDropzoneVisible(true);
+      return;
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      showError("Couldn't parse this file as JSON. Is it a valid .lottie or Lottie JSON export?");
+      setDropzoneVisible(true);
+      return;
+    }
+
+    const looksLikeAnimation = parsed && (Array.isArray(parsed.layers) || (parsed.assets !== undefined && parsed.fr !== undefined));
+    const looksLikeStateMachine = parsed && Array.isArray(parsed.states) && typeof parsed.initial === 'string';
+
+    if (looksLikeStateMachine && !looksLikeAnimation) {
+      showError('This file looks like a state machine definition rather than an animation. Load an animation (.lottie or .json) first, then attach this file to it below.');
+      setDropzoneVisible(true);
+      manifestPanel.innerHTML = '';
+      manifestPanel.appendChild(el('p', { class: 'empty', text: 'Nothing loaded yet.' }));
+      smBody.innerHTML = '';
+      smBody.appendChild(el('p', { class: 'empty', text: 'Load an animation first.' }));
+      return;
+    }
+
+    if (!looksLikeAnimation) {
+      showError("This JSON doesn't look like a Lottie animation or a dotLottie state machine.");
+      setDropzoneVisible(true);
+      return;
+    }
+
+    opts.data = parsed;
+    kindLabel = '.json';
+  }
+
+  fileBadge.textContent = kindLabel;
+  fileNameEl.textContent = file.name;
+  fileSummary.classList.add('visible');
+
+  try {
+    dotLottie = new DotLottie(opts);
+  } catch (e) {
+    showError('Could not initialize the player: ' + (e && e.message ? e.message : e));
+    setDropzoneVisible(true);
+    return;
+  }
+
+  wireEvents();
+  log('Loading "' + file.name + '"…');
+}
+
+function wireEvents(){
+  dotLottie.addEventListener('load', onLoaded);
+  dotLottie.addEventListener('loadError', onLoadError);
+  dotLottie.addEventListener('error', onLoadError);
+
+  dotLottie.addEventListener('stateMachineStateEntered', (ev) => {
+    if (smStateEl) smStateEl.textContent = ev && ev.state ? ev.state : '—';
+    log('entered state: ' + (ev && ev.state));
+  });
+  dotLottie.addEventListener('stateMachineTransition', (ev) => {
+    log((ev && ev.fromState) + ' → ' + (ev && ev.toState));
+  });
+  dotLottie.addEventListener('stateMachineStart', () => {
+    if (smStatusEl) { smStatusEl.textContent = 'Playing'; smStatusEl.classList.add('playing'); }
+  });
+  dotLottie.addEventListener('stateMachineStop', () => {
+    if (smStatusEl) { smStatusEl.textContent = 'Stopped'; smStatusEl.classList.remove('playing'); }
+  });
+  dotLottie.addEventListener('stateMachineError', (ev) => {
+    showError('State machine error: ' + (ev && ev.error ? ev.error : 'unknown'));
+  });
+  ['stateMachineNumericInputValueChange','stateMachineBooleanInputValueChange','stateMachineStringInputValueChange'].forEach(name => {
+    dotLottie.addEventListener(name, (ev) => {
+      if (!ev || !ev.inputName) return;
+      updateInputControl(ev.inputName, ev.newValue);
+      log(ev.inputName + ': ' + ev.oldValue + ' → ' + ev.newValue);
+    });
+  });
+}
+
+function onLoadError(ev){
+  showError("Couldn't load this file — is it a valid .lottie or Lottie JSON export?");
+  log('load error');
+  loaded = false;
+  setDropzoneVisible(true);
+}
+
+function onLoaded(){
+  clearError();
+  loaded = true;
+  setDropzoneVisible(false);
+  resizeCanvas();
+  setTransportEnabled(true);
+  log('animation loaded');
+
+  const manifest = dotLottie.manifest;
+  renderManifest(manifest);
+
+  const smIds = (manifest && Array.isArray(manifest.stateMachines))
+    ? manifest.stateMachines.map(sm => typeof sm === 'string' ? sm : sm.id).filter(Boolean)
+    : [];
+
+  if (smIds.length) {
+    smExternal.hidden = true;
+    renderSmSelector(smIds);
+    startStateMachine(smIds[0]);
+  } else {
+    smExternal.hidden = false;
+    smBody.innerHTML = '';
+    smBody.appendChild(el('p', { class: 'empty', text: 'No bundled state machine in this file.' }));
+  }
+}
+
+function renderManifest(manifest){
+  manifestPanel.innerHTML = '';
+  if (!manifest) {
+    manifestPanel.appendChild(el('p', { class: 'empty', text: 'Plain Lottie JSON — no dotLottie manifest.' }));
+    return;
+  }
+  const anims = (manifest.animations || []).map(a => typeof a === 'string' ? a : a.id).filter(Boolean);
+  const sms = (manifest.stateMachines || []).map(s => typeof s === 'string' ? s : s.id).filter(Boolean);
+  manifestPanel.appendChild(kvRow('animations', anims.join(', ') || '—'));
+  manifestPanel.appendChild(kvRow('state machines', sms.join(', ') || '—'));
+  if (manifest.generator) manifestPanel.appendChild(kvRow('generator', manifest.generator));
+}
+
+function renderSmSelector(ids){
+  smBody.innerHTML = '';
+  const external = !ids || ids.length === 0;
+
+  if (ids && ids.length > 1) {
+    const select = el('select', {});
+    ids.forEach(id => {
+      const opt = el('option', { value: id, text: id });
+      select.appendChild(opt);
+    });
+    select.addEventListener('change', () => startStateMachine(select.value));
+    smBody.appendChild(select);
+  }
+
+  const row = el('div', { class: 'sm-state-row' });
+  smStateEl = el('span', { class: 'state-name mono', text: '—' });
+  smStatusEl = el('span', { class: 'status-pill', text: 'Stopped' });
+  row.appendChild(smStateEl);
+  row.appendChild(smStatusEl);
+  smBody.appendChild(row);
+
+  const controls = el('div', { class: 'btn-row' });
+  const startBtn = el('button', { class: 'btn secondary', type: 'button', text: 'Start' });
+  const stopBtn = el('button', { class: 'btn secondary', type: 'button', text: 'Stop' });
+  startBtn.addEventListener('click', () => {
+    if (external) {
+      let started = false;
+      try { started = dotLottie.stateMachineStart(); } catch (e) {}
+      if (!started) { showError('Could not restart the attached state machine.'); return; }
+      log('state machine restarted');
+      flashClickHint();
+      try {
+        const cur = dotLottie.stateMachineGetCurrentState();
+        if (smStateEl && cur) smStateEl.textContent = cur;
+      } catch (e) {}
+      buildInputs();
+    } else {
+      const current = ids.length > 1 ? smBody.querySelector('select').value : ids[0];
+      startStateMachine(current);
+    }
+  });
+  stopBtn.addEventListener('click', () => {
+    try { dotLottie.stateMachineStop(); } catch (e) {}
+  });
+  controls.appendChild(startBtn);
+  controls.appendChild(stopBtn);
+  smBody.appendChild(controls);
+}
+
+function startStateMachine(id){
+  try { dotLottie.stateMachineStop(); } catch (e) {}
+  let ok = false;
+  try { ok = dotLottie.stateMachineLoad(id); } catch (e) {}
+  if (!ok) {
+    showError('Could not load state machine "' + id + '".');
+    return;
+  }
+  let started = false;
+  try { started = dotLottie.stateMachineStart(); } catch (e) {}
+  if (!started) {
+    showError('Could not start state machine "' + id + '".');
+    return;
+  }
+  log('state machine "' + id + '" started');
+  flashClickHint();
+  try {
+    const cur = dotLottie.stateMachineGetCurrentState();
+    if (smStateEl && cur) smStateEl.textContent = cur;
+  } catch (e) {}
+  buildInputs();
+}
+
+function buildInputs(){
+  inputsList.innerHTML = '';
+  let raw = [];
+  try { raw = dotLottie.stateMachineGetInputs() || []; } catch (e) {}
+  if (!raw.length) {
+    inputsList.appendChild(el('p', { class: 'empty', text: 'This state machine exposes no inputs.' }));
+    return;
+  }
+  for (let i = 0; i < raw.length; i += 2) {
+    const name = raw[i];
+    const type = raw[i + 1];
+    const row = el('div', { class: 'input-row' });
+    row.appendChild(el('span', { class: 'input-name mono', text: name }));
+
+    let control;
+    const t = String(type || '').toLowerCase();
+    if (t === 'boolean') {
+      control = el('input', { type: 'checkbox', class: 'input-control' });
+      let val = false;
+      try { val = dotLottie.stateMachineGetBooleanInput(name); } catch (e) {}
+      control.checked = !!val;
+      control.addEventListener('change', () => {
+        try { dotLottie.stateMachineSetBooleanInput(name, control.checked); } catch (e) {}
+      });
+    } else if (t === 'numeric' || t === 'number') {
+      control = el('input', { type: 'number', step: 'any', class: 'input-control' });
+      let val = 0;
+      try { val = dotLottie.stateMachineGetNumericInput(name); } catch (e) {}
+      control.value = (val === undefined || val === null) ? 0 : val;
+      control.addEventListener('change', () => {
+        try { dotLottie.stateMachineSetNumericInput(name, parseFloat(control.value) || 0); } catch (e) {}
+      });
+    } else {
+      control = el('input', { type: 'text', class: 'input-control' });
+      let val = '';
+      try { val = dotLottie.stateMachineGetStringInput(name); } catch (e) {}
+      control.value = val || '';
+      control.addEventListener('change', () => {
+        try { dotLottie.stateMachineSetStringInput(name, control.value); } catch (e) {}
+      });
+    }
+    control.dataset.inputName = name;
+    row.appendChild(control);
+    inputsList.appendChild(row);
+  }
+}
+
+function updateInputControl(name, value){
+  let target = null;
+  inputsList.querySelectorAll('[data-input-name]').forEach(node => {
+    if (node.dataset.inputName === name) target = node;
+  });
+  if (!target) return;
+  if (target.type === 'checkbox') target.checked = !!value;
+  else target.value = value;
+}
+
+chooseBtn.addEventListener('click', () => mainFileInput.click());
+mainFileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) loadAnimationFile(file);
+  mainFileInput.value = '';
+});
+
+chooseSmBtn.addEventListener('click', () => smFileInput.click());
+smFileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  smFileInput.value = '';
+  if (!file || !dotLottie) return;
+  clearError();
+  let text;
+  try {
+    text = await file.text();
+  } catch (err) {
+    showError("Couldn't read that file.");
+    return;
+  }
+  let ok = false;
+  try {
+    ok = dotLottie.stateMachineLoadData(text);
+  } catch (err) {
+    showError('Error loading state machine: ' + (err && err.message ? err.message : err));
+    return;
+  }
+  if (!ok) {
+    showError("This doesn't look like a valid state machine for this animation.");
+    return;
+  }
+  try { dotLottie.stateMachineStart(); } catch (err) {}
+  smExternal.hidden = false;
+  renderSmSelector([]);
+  log('external state machine "' + file.name + '" attached');
+  flashClickHint();
+  try {
+    const cur = dotLottie.stateMachineGetCurrentState();
+    if (smStateEl && cur) smStateEl.textContent = cur;
+  } catch (e) {}
+  buildInputs();
+});
+
+['dragenter', 'dragover'].forEach(evt => {
+  stage.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dropzone.style.display = 'flex';
+    dropzone.classList.add('drag-over');
+  });
+});
+['dragleave', 'drop'].forEach(evt => {
+  stage.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    if (loaded) dropzone.style.display = 'none';
+  });
+});
+stage.addEventListener('drop', (e) => {
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (file) loadAnimationFile(file);
+});
+
+playBtn.addEventListener('click', () => { if (dotLottie) try { dotLottie.play(); } catch (e) {} });
+pauseBtn.addEventListener('click', () => { if (dotLottie) try { dotLottie.pause(); } catch (e) {} });
+loopToggle.addEventListener('change', () => {
+  if (!dotLottie) return;
+  try {
+    if (typeof dotLottie.setLoop === 'function') dotLottie.setLoop(loopToggle.checked);
+    else dotLottie.loop = loopToggle.checked;
+  } catch (e) {}
+});
+</script>
+</body>
+</html>
