@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>adiraimaji.github.io</title>
+<meta name="description" content="An index of Android automation tools and utilities, drawn live from this repository.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bp-page:#0E2438;
+    --bp-sheet:#153353;
+    --bp-panel:#1B3E5C;
+    --bp-line:#2F5A82;
+    --bp-line-soft:#254A6E;
+    --ink:#EAF3FB;
+    --ink-dim:#8FAFCB;
+    --ink-faint:#5E80A0;
+    --accent:#FF9142;
+    --accent-ink:#3A2003;
+    --cyan:#6FCBE0;
+    --danger:#FF8C7A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bp-page);
+    background-image:
+      linear-gradient(var(--bp-line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bp-line-soft) 1px, transparent 1px);
+    background-size:28px 28px;
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    line-height:1.6;
+    min-height:100vh;
+  }
+  a{color:var(--cyan);}
+  .mono{font-family:'JetBrains Mono', monospace;}
+  .wrap{
+    max-width:920px;
+    margin:0 auto;
+    padding:56px 24px 80px;
+  }
+  .ruler{
+    display:flex;
+    gap:0;
+    margin-bottom:18px;
+    overflow:hidden;
+    user-select:none;
+  }
+  .ruler span{
+    flex:1 0 28px;
+    max-width:28px;
+    text-align:center;
+    font-size:9px;
+    color:var(--ink-faint);
+    border-left:1px solid var(--bp-line-soft);
+    padding-bottom:4px;
+  }
+  header.title-block{
+    border:1px solid var(--bp-line);
+    background:var(--bp-sheet);
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:24px;
+    padding:26px 28px;
+    flex-wrap:wrap;
+  }
+  header.title-block h1{
+    margin:0 0 8px;
+    font-size:26px;
+    font-weight:500;
+    letter-spacing:0.3px;
+  }
+  header.title-block p{
+    margin:0;
+    max-width:46ch;
+    color:var(--ink-dim);
+    font-size:14.5px;
+  }
+  .stamp{
+    text-align:right;
+    font-size:11px;
+    color:var(--ink-faint);
+    line-height:1.9;
+    white-space:nowrap;
+  }
+  .stamp strong{color:var(--ink-dim);font-weight:500;}
+  .status-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    margin:22px 0 28px;
+    padding-bottom:14px;
+    border-bottom:1px dashed var(--bp-line);
+    font-size:13px;
+    color:var(--ink-dim);
+  }
+  .status-row .dot{
+    display:inline-block;
+    width:7px;height:7px;
+    border-radius:50%;
+    background:var(--cyan);
+    margin-right:8px;
+    position:relative;top:-1px;
+  }
+  .status-row .dot.err{background:var(--danger);}
+  .status-row .dot.wait{background:var(--accent);}
+  button.refresh{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--ink-dim);
+    background:transparent;
+    border:1px dashed var(--bp-line);
+    padding:7px 12px;
+    cursor:pointer;
+  }
+  button.refresh:hover{border-color:var(--accent);color:var(--accent);}
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));
+    gap:16px;
+  }
+  .card{
+    border:1px solid var(--bp-line);
+    background:var(--bp-panel);
+    padding:18px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    transition:transform 120ms ease, border-color 120ms ease;
+  }
+  .card:hover{
+    border-color:var(--accent);
+    transform:translateY(-2px);
+  }
+  .card .head{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+  }
+  .card .no{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--accent);
+    border:1px solid var(--bp-line);
+    padding:3px 6px;
+    flex:0 0 auto;
+  }
+  .card h2{
+    margin:0;
+    font-size:16.5px;
+    font-weight:500;
+    font-family:'JetBrains Mono', monospace;
+    letter-spacing:0.2px;
+  }
+  .card .path{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    color:var(--ink-faint);
+    word-break:break-all;
+  }
+  .card a.open{
+    margin-top:auto;
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    color:var(--ink);
+    text-decoration:none;
+    border:1px dashed var(--bp-line);
+    padding:9px 10px;
+  }
+  .card a.open:hover{
+    border-style:solid;
+    border-color:var(--accent);
+    background:var(--accent);
+    color:var(--accent-ink);
+  }
+  .empty, .error{
+    border:1px dashed var(--bp-line);
+    padding:32px 24px;
+    text-align:center;
+    color:var(--ink-dim);
+    font-size:14px;
+  }
+  .empty code, .error code{
+    font-family:'JetBrains Mono', monospace;
+    color:var(--ink);
+    background:var(--bp-sheet);
+    padding:1px 5px;
+  }
+  .error{color:var(--danger);border-color:#5c3a35;}
+  .error button{
+    margin-top:14px;
+  }
+  footer{
+    margin-top:44px;
+    padding-top:16px;
+    border-top:1px solid var(--bp-line-soft);
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    font-size:12px;
+    color:var(--ink-faint);
+  }
+  footer a{color:var(--ink-dim);}
+  footer a:hover{color:var(--cyan);}
+  @media (max-width:520px){
+    header.title-block{flex-direction:column;align-items:flex-start;}
+    .stamp{text-align:left;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="ruler" aria-hidden="true" id="ruler"></div>
+
+  <header class="title-block">
+    <div>
+      <h1 class="mono">adiraimaji.github.io</h1>
+      <p>An index of Android automation tools and utilities. Each sheet listed below is pulled live from <code class="mono">/pages</code> in this repository.</p>
+    </div>
+    <div class="stamp mono">
+      SOURCE&nbsp;<strong>/pages</strong><br>
+      MODE&nbsp;<strong>live</strong><br>
+      REPO&nbsp;<strong>adiraimaji.github.io</strong>
+    </div>
+  </header>
+
+  <div class="status-row mono" id="statusRow">
+    <span id="statusText"><span class="dot wait"></span>Reading /pages&hellip;</span>
+    <button class="refresh" id="refreshBtn" type="button">Refresh</button>
+  </div>
+
+  <div id="content">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <footer class="mono">
+    <span>View source on <a href="https://github.com/adiraimaji/adiraimaji.github.io" target="_blank" rel="noopener">GitHub</a></span>
+    <span id="syncedAt"></span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var OWNER = 'adiraimaji';
+  var REPO = 'adiraimaji.github.io';
+  var DIR = 'pages';
+  var API_URL = 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + DIR;
+  var CACHE_KEY = 'adiraimaji_sheet_cache_v1';
+
+  var ruler = document.getElementById('ruler');
+  for (var i = 1; i <= 32; i++){
+    var s = document.createElement('span');
+    s.textContent = i % 4 === 0 ? i : '';
+    ruler.appendChild(s);
+  }
+
+  var grid = document.getElementById('grid');
+  var content = document.getElementById('content');
+  var statusText = document.getElementById('statusText');
+  var syncedAt = document.getElementById('syncedAt');
+  var refreshBtn = document.getElementById('refreshBtn');
+
+  function titleFromFilename(name){
+    var base = name.replace(/_index\.html$/i, '');
+    return base.replace(/_/g, ' ').trim();
+  }
+
+  function numberTag(i){
+    return String(i + 1).padStart(2, '0');
+  }
+
+  function setStatus(kind, text){
+    var dotClass = kind === 'error' ? 'dot err' : (kind === 'wait' ? 'dot wait' : 'dot');
+    statusText.innerHTML = '<span class="' + dotClass + '"></span>' + text;
+  }
+
+  function renderSheets(files){
+    grid.innerHTML = '';
+    content.innerHTML = '';
+
+    if (!files.length){
+      content.innerHTML =
+        '<div class="empty mono">No sheets published yet.<br><br>' +
+        'Add a file ending in <code>_index.html</code> to <code>/pages</code> to see it here.</div>';
+      setStatus('ok', '0 sheets indexed');
+      return;
+    }
+
+    var newGrid = document.createElement('div');
+    newGrid.className = 'grid';
+
+    files.sort(function(a, b){ return a.name.localeCompare(b.name); });
+
+    files.forEach(function(file, i){
+      var card = document.createElement('div');
+      card.className = 'card';
+
+      var head = document.createElement('div');
+      head.className = 'head';
+
+      var no = document.createElement('span');
+      no.className = 'no mono';
+      no.textContent = numberTag(i);
+
+      var h2 = document.createElement('h2');
+      h2.textContent = titleFromFilename(file.name);
+
+      head.appendChild(no);
+      head.appendChild(h2);
+
+      var path = document.createElement('div');
+      path.className = 'path';
+      path.textContent = DIR + '/' + file.name;
+
+      var open = document.createElement('a');
+      open.className = 'open mono';
+      open.href = DIR + '/' + file.name;
+      open.textContent = 'Open sheet';
+
+      card.appendChild(head);
+      card.appendChild(path);
+      card.appendChild(open);
+      newGrid.appendChild(card);
+    });
+
+    content.appendChild(newGrid);
+    setStatus('ok', files.length + (files.length === 1 ? ' sheet indexed' : ' sheets indexed'));
+  }
+
+  function renderError(message, cached){
+    var html = '<div class="error mono">' + message;
+    if (cached && cached.length){
+      html += '<br><br>Showing the last known index instead.</div>';
+      content.innerHTML = html;
+      renderSheets(cached);
+      setStatus('error', 'Live sync failed &middot; showing cached index');
+      return;
+    }
+    html += '<br><br><button class="refresh" id="retryBtn" type="button">Try again</button></div>';
+    content.innerHTML = html;
+    document.getElementById('retryBtn').addEventListener('click', load);
+    setStatus('error', 'Could not reach GitHub');
+  }
+
+  function stampSyncTime(){
+    var now = new Date();
+    syncedAt.textContent = 'Last synced ' + now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }
+
+  function readCache(){
+    try{
+      var raw = sessionStorage.getItem(CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  }
+
+  function writeCache(files){
+    try{ sessionStorage.setItem(CACHE_KEY, JSON.stringify(files)); }catch(e){}
+  }
+
+  function load(){
+    setStatus('wait', 'Reading /pages&hellip;');
+    content.innerHTML = '<div class="grid" id="grid"></div>';
+
+    fetch(API_URL, { headers: { 'Accept': 'application/vnd.github+json' } })
+      .then(function(res){
+        if (res.status === 404){
+          throw { kind:'missing', message:'The <code>/pages</code> folder does not exist in this repository yet.' };
+        }
+        if (!res.ok){
+          throw { kind:'http', message:'GitHub returned an error (status ' + res.status + '). This is often a rate limit &mdash; try again shortly.' };
+        }
+        return res.json();
+      })
+      .then(function(items){
+        var files = (items || []).filter(function(item){
+          return item.type === 'file' && /_index\.html$/i.test(item.name);
+        });
+        writeCache(files);
+        renderSheets(files);
+        stampSyncTime();
+      })
+      .catch(function(err){
+        var message = (err && err.message) ? err.message : 'Could not reach GitHub&rsquo;s API right now.';
+        renderError(message, readCache());
+        stampSyncTime();
+      });
+  }
+
+  refreshBtn.addEventListener('click', load);
+  load();
+})();
+</script>
+</body>
+</html>
