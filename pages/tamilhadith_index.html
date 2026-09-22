@@ -167,6 +167,12 @@
   }
   .search-extra label{display:flex; align-items:center; gap:6px; cursor:pointer;}
   .search-extra input[type="checkbox"]{accent-color:var(--primary);}
+  .search-extra select{
+    border:1px solid var(--border); border-radius:6px; background:var(--surface);
+    padding:5px 8px; font-family:inherit; font-size:.85rem; color:var(--text);
+    cursor:pointer;
+  }
+  .search-extra select:focus{border-color:var(--primary);}
 
   .search-hint{
     font-size:.76rem; color:var(--text-faint); margin:8px 0 0; line-height:1.6;
@@ -369,6 +375,7 @@
   var bookCache = {};             // filename -> parsed book object
   var selectedFiles = new Set();  // checked filenames on home page
   var lastBookErrors = {};        // filename -> {kind, attempts, detail}
+  var globalGrades = [];          // distinct "ஹதீஸ் தரம்" values seen so far, in first-seen order
 
   // ---------------- generic helpers ----------------
 
@@ -457,6 +464,17 @@
   }
 
   function isPureNumber(q){ return /^\d+$/.test(String(q || "").trim()); }
+
+  function noteGrade(g){
+    var v = String(g || "").trim();
+    if (v && globalGrades.indexOf(v) === -1) globalGrades.push(v);
+  }
+
+  function collectGrades(bookData){
+    Object.keys(bookData).forEach(function(hKey){
+      noteGrade(fieldOf(bookData[hKey], "ஹதீஸ் தரம்"));
+    });
+  }
 
   // Returns {matched: bool, highlightTerms: [strings to mark]}
   function evaluateQuery(haystack, mode, rawQuery){
@@ -618,6 +636,7 @@
 
     return Promise.resolve(tryNext(0)).then(function(result){
       bookCache[filename] = result.data;
+      collectGrades(result.data);
       return result.data;
     });
   }
@@ -671,6 +690,37 @@
 
   // ---------------- search panel (shared component) ----------------
 
+  function gradeOptionsHtml(selectedValue){
+    var opts = '<option value="">அனைத்தும்</option>';
+    globalGrades.forEach(function(g){
+      opts += '<option value="' + escapeHtml(g) + '"' + (g === selectedValue ? " selected" : "") + '>' + escapeHtml(g) + '</option>';
+    });
+    return opts;
+  }
+
+  // Re-populates every "ஹதீஸ் தரம்" <select> currently on the page (there's
+  // only ever one, but this is safe either way) as more books finish loading
+  // in the background, without disturbing whatever the visitor already chose.
+  function refreshGradeOptions(){
+    var sel = document.getElementById("sp-grade");
+    if (!sel) return;
+    var current = sel.value;
+    sel.innerHTML = gradeOptionsHtml(current);
+    sel.value = current;
+  }
+
+  // Loads every book in the background (independent of search scope) purely
+  // so the grade filter can eventually list every "ஹதீஸ் தரம்" value that
+  // exists anywhere in the library. Safe to call repeatedly — loadBook and
+  // loadManifest both cache, so already-loaded books are skipped instantly.
+  function prefetchGradesInBackground(){
+    loadManifest().then(function(list){
+      list.forEach(function(f){
+        loadBook(f).then(refreshGradeOptions).catch(function(){ /* ignore here; surfaced elsewhere */ });
+      });
+    }).catch(function(){});
+  }
+
   // opts: { scopeType: "home" } or { scopeType: "book", file, bookTitle }
   function searchPanelHtml(opts){
     var scopeControl = "";
@@ -697,13 +747,17 @@
           '<div class="search-extra">' +
             '<label><input type="checkbox" id="sp-titles"> அத்தியாயம் / பாடத் தலைப்புகளிலும் தேடு</label>' +
           '</div>' +
+          '<div class="search-extra">' +
+            '<label class="grade-filter">ஹதீஸ் தரம்: <select id="sp-grade" class="ui">' + gradeOptionsHtml("") + '</select></label>' +
+          '</div>' +
           scopeControl +
           '<p class="search-hint">' +
             '<b>எடுத்துக்காட்டுகள்:</b> <code>நோன்பு நீர்</code> + அனைத்து வார்த்தைகளும் — இரண்டு வார்த்தையும் உள்ளவற்றை மட்டும் காட்டும். ' +
             '<code>நோன்பு நீர்</code> + ஏதேனும் ஒன்று — ஏதேனும் ஒரு வார்த்தை உள்ள அனைத்தையும் காட்டும். ' +
             'மேற்கோள் குறிக்குள் இட்டால் — <code>&quot;நோன்பு நீர்&quot;</code> — அது ஒரே சொற்றொடராகவே தேடப்படும் (ஏதேனும் ஒன்று என்ற முறையிலும் கூட). ' +
             '<code>-கனவு</code> அல்லது <code>-&quot;நோன்பு நீர்&quot;</code> எனத் தொடங்கினால் அது இல்லாதவை மட்டும் காட்டப்படும். ' +
-            'ஹதீஸ் எண்ணை மட்டும் (எ.கா. <b>23</b>) உள்ளிட்டால் நேரடியாக அந்த எண் கொண்ட ஹதீஸ் காட்டப்படும்.' +
+            'ஹதீஸ் எண்ணை மட்டும் (எ.கா. <b>23</b>) உள்ளிட்டால் நேரடியாக அந்த எண் கொண்ட ஹதீஸ் காட்டப்படும். ' +
+            'ஹதீஸ் தரத்தை மட்டும் தேர்ந்தெடுத்து, வார்த்தை எதுவும் இல்லாமலேயே அந்தத் தரத்தின் அனைத்து ஹதீஸ்களையும் பட்டியலிடலாம்.' +
           '</p>' +
         '</form>' +
       '</section>'
@@ -716,7 +770,8 @@
     form.addEventListener("submit", function(e){
       e.preventDefault();
       var q = document.getElementById("sp-query").value.trim();
-      if (!q) return;
+      var gradeVal = document.getElementById("sp-grade").value;
+      if (!q && !gradeVal) return;
       var mode = form.querySelector('input[name="sp-mode"]:checked').value;
       var titles = document.getElementById("sp-titles").checked ? "1" : "0";
 
@@ -731,9 +786,15 @@
       }
 
       var hash = "#/search?q=" + encodeURIComponent(q) + "&mode=" + mode + "&titles=" + titles +
+        (gradeVal ? "&grade=" + encodeURIComponent(gradeVal) : "") +
         (booksParam ? "&books=" + booksParam : "");
       navigate(hash);
     });
+
+    // Show whatever grades we already know immediately, then keep
+    // improving the list in the background as more books load.
+    refreshGradeOptions();
+    prefetchGradesInBackground();
   }
 
   // ---------------- routing ----------------
@@ -766,7 +827,8 @@
         params.get("q") || "",
         params.get("books") || "",
         params.get("mode") || "all",
-        params.get("titles") === "1"
+        params.get("titles") === "1",
+        params.get("grade") || ""
       );
     }
     app.classList.add("wide-home");
@@ -950,12 +1012,13 @@
     });
   }
 
-  function viewSearch(query, booksParam, mode, includeTitles){
+  function viewSearch(query, booksParam, mode, includeTitles, gradeFilter){
     query = (query || "").trim();
+    gradeFilter = (gradeFilter || "").trim();
     var targetFiles = booksParam ? booksParam.split(",").map(decodeURIComponent).filter(Boolean) : [];
 
-    if (!query){
-      errorBox("தேட வேண்டிய வார்த்தை அல்லது ஹதீஸ் எண்ணை உள்ளிடவும்.");
+    if (!query && !gradeFilter){
+      errorBox("தேட வேண்டிய வார்த்தை, ஹதீஸ் எண் அல்லது ஹதீஸ் தரத்தைத் தேர்ந்தெடுக்கவும்.");
       return;
     }
 
@@ -969,7 +1032,8 @@
         return;
       }
 
-      var numericQuery = isPureNumber(query) ? parseInt(query, 10) : null;
+      var queryEmpty = query === "";
+      var numericQuery = (!queryEmpty && isPureNumber(query)) ? parseInt(query, 10) : null;
       var results = [];
       var skipped = [];
       var loadedCount = 0;
@@ -986,6 +1050,14 @@
 
           Object.keys(data).forEach(function(hKey){
             var entry = data[hKey];
+
+            if (gradeFilter && fieldOf(entry, "ஹதீஸ் தரம்").trim() !== gradeFilter) return;
+
+            if (queryEmpty){
+              results.push({file:f, bookTitle:bookTitle, key:hKey, entry:entry, highlightTerms:[],
+                chapterKey: chapterKeyOf(entry), chapterTitle: fieldOf(entry, "அத்தியாய தலைப்பு")});
+              return;
+            }
 
             if (numericQuery !== null){
               var kNum = parseInt(hKey, 10);
@@ -1016,9 +1088,16 @@
       var modeLabel = mode === "any" ? "ஏதேனும் ஒரு வார்த்தை" : (mode === "phrase" ? "சரியான சொற்றொடர்" : "அனைத்து வார்த்தைகளும்");
 
       function renderResults(){
+        var titleText = queryEmpty
+          ? ('ஹதீஸ் தரம்: “' + escapeHtml(gradeFilter) + '” — தேடல் முடிவுகள்')
+          : ('“' + escapeHtml(query) + '” — தேடல் முடிவுகள்');
+        var metaBits = [results.length + ' முடிவுகள்', files.length + ' நூல்(கள்) தேடப்பட்டன'];
+        if (!queryEmpty) metaBits.push('முறை: ' + escapeHtml(modeLabel));
+        if (gradeFilter) metaBits.push('ஹதீஸ் தரம்: ' + escapeHtml(gradeFilter));
+
         var heading = '<p class="crumbs"><a href="#/">முகப்பு</a><span class="sep">›</span>தேடல் முடிவுகள்</p>' +
-          '<h1 class="page-title">“' + escapeHtml(query) + '” — தேடல் முடிவுகள்</h1>' +
-          '<p class="page-meta">' + results.length + ' முடிவுகள் · ' + files.length + ' நூல்(கள்) தேடப்பட்டன · முறை: ' + escapeHtml(modeLabel) + '</p>';
+          '<h1 class="page-title">' + titleText + '</h1>' +
+          '<p class="page-meta">' + metaBits.join(' · ') + '</p>';
 
         var warn = "";
         if (skipped.length){
