@@ -6,268 +6,284 @@
 <title>தமிழ் ஹதீஸ் தொகுப்பு — தேடல் &amp; வாசிப்பு</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Tamil:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#F7F2E6;
-    --paper-2:#EFE7D2;
-    --paper-3:#FBF8F0;
-    --ink:#23281D;
-    --ink-soft:#5B6152;
-    --ink-faint:#8A8A72;
-    --primary:#1F4739;
-    --primary-2:#173933;
-    --gold:#A9782E;
-    --gold-soft:#C79A4B;
-    --line:#D9CFAF;
-    --line-soft:#E7DFC7;
-    --green-grade:#2F5D3B;
-    --green-grade-bg:#E4EEDF;
-    --blue-grade:#2E5C68;
-    --blue-grade-bg:#E1EBEC;
-    --amber-grade:#95402A;
-    --amber-grade-bg:#F3E2D6;
-    --grey-grade:#5B6152;
-    --grey-grade-bg:#EAE6D6;
-    --radius:6px;
+    --bg:#F3F7FD;
+    --surface:#FFFFFF;
+    --surface-2:#EAF1FC;
+    --primary:#175CD3;
+    --primary-dark:#0F3F94;
+    --primary-soft:#E4EEFC;
+    --text:#101828;
+    --text-soft:#475467;
+    --text-faint:#98A2B3;
+    --border:#E1E8F5;
+    --border-soft:#EDF2FB;
+    --green-grade:#1B7A43; --green-grade-bg:#E1F5E9;
+    --blue-grade:#175CD3;  --blue-grade-bg:#E4EEFC;
+    --amber-grade:#B54708; --amber-grade-bg:#FCEEE0;
+    --grey-grade:#475467;  --grey-grade-bg:#EEF1F6;
+    --radius:12px;
+    --radius-sm:8px;
     --maxw:760px;
+    --hf-scale:1;
+    --shadow:0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
   }
 
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    background:var(--paper);
-    color:var(--ink);
-    font-family:'Noto Serif Tamil', Georgia, serif;
-    font-size:17px;
-    line-height:1.7;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Noto Sans Tamil','Inter',Arial,sans-serif;
+    font-size:16px;
+    line-height:1.65;
     -webkit-font-smoothing:antialiased;
   }
   a{color:inherit;}
-  .ui{font-family:'Noto Sans Tamil', Arial, sans-serif;}
+  .ui{font-family:'Noto Sans Tamil','Inter',Arial,sans-serif;}
 
-  ::selection{background:var(--gold-soft);color:var(--primary-2);}
+  ::selection{background:var(--primary-soft); color:var(--primary-dark);}
   mark{
-    background:var(--gold-soft); color:var(--primary-2);
-    padding:0 2px; border-radius:2px;
+    background:#FFE58A; color:#5C4300;
+    padding:0 2px; border-radius:3px;
   }
 
   /* ---------- header ---------- */
   header.site-head{
     position:sticky; top:0; z-index:20;
-    background:var(--paper-2);
-    border-bottom:1px solid var(--line);
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
   }
   .head-row{
     max-width:920px; margin:0 auto;
     padding:14px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
   }
   .brand{
-    display:flex; flex-direction:column; gap:2px; cursor:pointer;
-    text-decoration:none; width:fit-content;
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+    text-decoration:none;
   }
-  .brand .title{
-    font-family:'Noto Serif Tamil', serif;
-    font-weight:700; font-size:1.28rem; color:var(--primary-2);
-    letter-spacing:.2px;
+  .brand .mark{
+    width:34px; height:34px; border-radius:9px;
+    background:linear-gradient(155deg, var(--primary), var(--primary-dark));
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:1.05rem; flex:0 0 auto;
   }
-  .brand .subtitle{
-    font-family:'Noto Sans Tamil', sans-serif;
-    font-size:.72rem; color:var(--ink-soft);
+  .brand .titles{display:flex; flex-direction:column; gap:1px;}
+  .brand .title{font-weight:700; font-size:1.1rem; color:var(--text);}
+  .brand .subtitle{font-size:.72rem; color:var(--text-faint);}
+
+  .font-ctrl{
+    display:flex; align-items:center; gap:2px;
+    background:var(--surface-2); border:1px solid var(--border);
+    border-radius:20px; padding:3px;
+  }
+  .font-ctrl button{
+    border:none; background:transparent; color:var(--primary-dark);
+    width:30px; height:30px; border-radius:16px; cursor:pointer;
+    font-family:'Inter',sans-serif; font-weight:700; font-size:.85rem;
+  }
+  .font-ctrl button:hover{background:var(--surface);}
+  .font-ctrl .lbl{
+    font-size:.68rem; color:var(--text-faint); padding:0 6px; white-space:nowrap;
   }
 
   /* ---------- layout ---------- */
-  main{max-width:var(--maxw); margin:0 auto; padding:28px 20px 80px;}
+  main{max-width:var(--maxw); margin:0 auto; padding:26px 20px 80px;}
 
   .crumbs{
-    font-family:'Noto Sans Tamil', sans-serif;
-    font-size:.82rem; color:var(--ink-soft);
-    margin-bottom:22px;
+    font-size:.82rem; color:var(--text-faint);
+    margin-bottom:20px;
   }
-  .crumbs a{color:var(--primary-2); text-decoration:none;}
+  .crumbs a{color:var(--primary); text-decoration:none;}
   .crumbs a:hover{text-decoration:underline;}
-  .crumbs .sep{margin:0 6px; color:var(--ink-faint);}
+  .crumbs .sep{margin:0 6px; color:var(--text-faint);}
 
   h1.page-title{
-    font-size:1.6rem; font-weight:700; color:var(--primary-2);
+    font-size:1.5rem; font-weight:700; color:var(--text);
     margin:0 0 4px;
   }
   p.page-meta{
-    font-family:'Noto Sans Tamil', sans-serif;
-    color:var(--ink-soft); font-size:.85rem; margin:0 0 26px;
+    color:var(--text-soft); font-size:.85rem; margin:0 0 22px;
   }
 
   /* ---------- home hero ---------- */
-  .hero{margin-bottom:26px;}
+  .hero{margin-bottom:22px;}
   .hero h1{
-    font-size:2.05rem; font-weight:700; color:var(--primary-2);
+    font-size:1.9rem; font-weight:700; color:var(--text);
     margin:0 0 8px; line-height:1.3;
   }
   .hero p{
-    color:var(--ink-soft); font-size:1.02rem; max-width:56ch; margin:0;
+    color:var(--text-soft); font-size:1rem; max-width:56ch; margin:0;
   }
 
   /* ---------- search panel (shared: home + book pages) ---------- */
   .search-panel{
-    background:var(--paper-3);
-    border:1px solid var(--line);
+    background:var(--surface);
+    border:1px solid var(--border);
     border-radius:var(--radius);
+    box-shadow:var(--shadow);
     padding:20px 22px;
-    margin-bottom:30px;
+    margin-bottom:28px;
   }
   .search-panel h2{
-    font-family:'Noto Sans Tamil', sans-serif;
-    font-size:.98rem; font-weight:600; color:var(--primary-2);
+    font-size:.95rem; font-weight:700; color:var(--primary-dark);
     margin:0 0 14px;
   }
   .search-row{
     display:flex; gap:8px; margin-bottom:14px;
   }
   .search-row input[type="search"]{
-    flex:1; border:1px solid var(--line); border-radius:4px;
-    background:var(--paper); outline:none;
-    font-family:'Noto Sans Tamil', sans-serif;
-    font-size:.98rem; color:var(--ink); padding:10px 12px;
+    flex:1; border:1px solid var(--border); border-radius:999px;
+    background:var(--surface-2); outline:none;
+    font-size:.96rem; color:var(--text); padding:11px 16px;
   }
-  .search-row input[type="search"]:focus{border-color:var(--primary);}
+  .search-row input[type="search"]:focus{border-color:var(--primary); background:var(--surface);}
   .search-row button{
-    border:none; background:var(--primary); color:var(--paper-3);
-    font-family:'Noto Sans Tamil', sans-serif; font-weight:600;
-    font-size:.92rem; padding:0 20px; border-radius:4px; cursor:pointer;
+    border:none; background:var(--primary); color:#fff;
+    font-weight:600; font-size:.92rem; padding:0 22px; border-radius:999px; cursor:pointer;
   }
-  .search-row button:hover{background:var(--primary-2);}
+  .search-row button:hover{background:var(--primary-dark);}
 
   fieldset.search-modes{
     border:none; margin:0 0 12px; padding:0;
-    display:flex; flex-wrap:wrap; gap:16px;
-    font-family:'Noto Sans Tamil', sans-serif; font-size:.85rem;
+    display:flex; flex-wrap:wrap; gap:8px 16px;
+    font-size:.84rem;
   }
   fieldset.search-modes legend{
-    font-size:.78rem; color:var(--ink-faint); padding:0 0 6px; width:100%;
+    font-size:.74rem; color:var(--text-faint); padding:0 0 6px; width:100%;
   }
   fieldset.search-modes label{
-    display:flex; align-items:center; gap:6px; color:var(--ink-soft); cursor:pointer;
+    display:flex; align-items:center; gap:6px; color:var(--text-soft); cursor:pointer;
   }
   fieldset.search-modes input[type="radio"]{accent-color:var(--primary);}
 
   .search-extra{
-    display:flex; flex-wrap:wrap; gap:16px; margin-bottom:10px;
-    font-family:'Noto Sans Tamil', sans-serif; font-size:.85rem;
-    color:var(--ink-soft);
+    display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:10px;
+    font-size:.84rem; color:var(--text-soft);
   }
   .search-extra label{display:flex; align-items:center; gap:6px; cursor:pointer;}
   .search-extra input[type="checkbox"]{accent-color:var(--primary);}
 
   .search-hint{
-    font-family:'Noto Sans Tamil', sans-serif; font-size:.76rem;
-    color:var(--ink-faint); margin:8px 0 0; line-height:1.55;
+    font-size:.76rem; color:var(--text-faint); margin:8px 0 0; line-height:1.6;
   }
-  .search-hint b{color:var(--ink-soft);}
+  .search-hint b{color:var(--text-soft);}
+  .search-hint code{background:var(--surface-2); padding:0 5px; border-radius:4px;}
 
   /* ---------- book list (home) ---------- */
   .list-toolbar{
     display:flex; align-items:baseline; justify-content:space-between;
     gap:12px; flex-wrap:wrap;
-    border-bottom:1px solid var(--line);
-    padding-bottom:8px; margin-bottom:4px;
+    padding-bottom:10px; margin-bottom:2px;
   }
   .list-toolbar h2{
-    font-size:1.05rem; font-weight:600; color:var(--primary-2); margin:0;
+    font-size:1rem; font-weight:700; color:var(--text); margin:0;
   }
-  .list-toolbar .toolbar-actions{
-    font-family:'Noto Sans Tamil', sans-serif; font-size:.8rem;
-  }
+  .list-toolbar .toolbar-actions{font-size:.8rem;}
   .list-toolbar .toolbar-actions button{
-    background:none; border:none; color:var(--gold); cursor:pointer;
-    font-family:inherit; font-size:.8rem; padding:0 4px;
-    text-decoration:underline;
+    background:none; border:none; color:var(--primary); cursor:pointer;
+    font-family:inherit; font-size:.8rem; padding:0 4px; font-weight:600;
   }
-  .list-toolbar .toolbar-actions .sep{color:var(--ink-faint); margin:0 2px;}
+  .list-toolbar .toolbar-actions .sep{color:var(--text-faint); margin:0 2px;}
 
   ul.book-list{list-style:none; margin:0; padding:0;}
   ul.book-list li{
-    border-bottom:1px solid var(--line-soft);
-    padding:13px 2px;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    padding:13px 14px; margin-bottom:10px;
     display:flex; align-items:flex-start; gap:12px;
   }
-  ul.book-list li:hover{background:var(--paper-3);}
+  ul.book-list li:hover{border-color:var(--primary);}
   ul.book-list input[type="checkbox"]{
     margin-top:5px; width:16px; height:16px; accent-color:var(--primary);
     flex:0 0 auto;
   }
   ul.book-list .book-link{
-    flex:1; text-decoration:none; color:var(--ink); cursor:pointer;
+    flex:1; text-decoration:none; color:var(--text); cursor:pointer;
   }
   ul.book-list .book-name{
-    font-size:1.08rem; font-weight:600; color:var(--primary-2);
+    font-size:1.04rem; font-weight:700; color:var(--text);
   }
-  ul.book-list .book-link:hover .book-name{color:var(--gold);}
+  ul.book-list .book-link:hover .book-name{color:var(--primary);}
   ul.book-list .book-sub{
-    font-family:'Noto Sans Tamil', sans-serif; font-size:.78rem;
-    color:var(--ink-faint); margin-top:2px;
+    font-size:.78rem; color:var(--text-faint); margin-top:2px;
   }
   .selection-note{
-    font-family:'Noto Sans Tamil', sans-serif; font-size:.8rem;
-    color:var(--ink-soft); margin:14px 0 26px;
+    font-size:.8rem; color:var(--text-soft); margin:14px 0 26px;
   }
-  .selection-note strong{color:var(--primary-2);}
+  .selection-note strong{color:var(--primary-dark);}
 
   /* ---------- chapters table ---------- */
-  table.chapter-table{width:100%; border-collapse:collapse; margin-top:6px;}
+  table.chapter-table{
+    width:100%; border-collapse:collapse; margin-top:6px;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); overflow:hidden;
+  }
   table.chapter-table thead th{
-    text-align:left; font-family:'Noto Sans Tamil', sans-serif;
-    font-size:.75rem; color:var(--ink-soft); font-weight:600;
-    border-bottom:1px solid var(--line); padding:0 8px 8px 2px;
+    text-align:left; font-size:.74rem; color:var(--text-faint); font-weight:700;
+    background:var(--surface-2);
+    padding:10px 12px;
   }
   table.chapter-table tbody tr{
-    border-bottom:1px solid var(--line-soft); cursor:pointer;
+    border-top:1px solid var(--border-soft); cursor:pointer;
   }
-  table.chapter-table tbody tr:hover{background:var(--paper-3);}
-  table.chapter-table td{padding:12px 8px 12px 2px; vertical-align:top;}
+  table.chapter-table tbody tr:hover{background:var(--surface-2);}
+  table.chapter-table td{padding:13px 12px; vertical-align:top;}
   table.chapter-table td.ch-num{
-    width:52px; color:var(--gold); font-weight:700; font-size:1.02rem;
+    width:52px; color:var(--primary); font-weight:700; font-size:1rem;
   }
-  table.chapter-table td.ch-title{color:var(--ink); font-size:1rem;}
+  table.chapter-table td.ch-title{color:var(--text); font-size:.98rem;}
   table.chapter-table td.ch-count{
-    width:70px; text-align:right; font-family:'Noto Sans Tamil', sans-serif;
-    font-size:.78rem; color:var(--ink-faint);
+    width:70px; text-align:right; font-size:.78rem; color:var(--text-faint);
   }
 
   /* ---------- hadith cards ---------- */
   .result-crumb{
-    font-family:'Noto Sans Tamil', sans-serif; font-size:.76rem;
-    color:var(--ink-faint); margin:22px 0 6px;
+    font-size:.76rem; color:var(--text-faint); margin:20px 0 6px;
   }
   .result-crumb:first-of-type{margin-top:0;}
 
   article.hadith-card{
-    background:var(--paper-3);
-    border:1px solid var(--line-soft);
-    border-left:3px solid var(--primary);
+    background:var(--surface);
+    border:1px solid var(--border);
     border-radius:var(--radius);
+    box-shadow:var(--shadow);
     padding:18px 20px;
-    margin-bottom:18px;
+    margin-bottom:16px;
+    font-size:calc(1rem * var(--hf-scale));
+    scroll-margin-top:84px;
+    transition:box-shadow .4s ease, border-color .4s ease;
+  }
+  article.hadith-card.hadith-focus{
+    border-color:var(--primary);
+    box-shadow:0 0 0 3px var(--primary-soft), var(--shadow);
   }
   .hadith-topic{
-    font-size:.98rem; font-weight:600; color:var(--primary-2);
+    font-size:.95em; font-weight:700; color:var(--primary-dark);
     margin:0 0 10px;
     padding-bottom:8px;
-    border-bottom:1px solid var(--line-soft);
+    border-bottom:1px solid var(--border-soft);
   }
   .hadith-body p{margin:0 0 10px;}
   .hadith-body p:last-child{margin-bottom:0;}
   .hadith-num{
-    color:var(--gold); font-weight:700; margin-right:2px; white-space:nowrap;
+    color:var(--primary); font-weight:700; margin-right:2px; white-space:nowrap;
   }
-  .hadith-text{color:var(--ink);}
+  a.hadith-num-link{
+    text-decoration:none; border-bottom:1px dashed var(--primary);
+  }
+  a.hadith-num-link:hover{background:var(--primary-soft); border-radius:3px;}
+  .hadith-text{color:var(--text);}
   .hadith-grade{
-    margin-top:12px; padding-top:10px; border-top:1px dashed var(--line);
-    font-family:'Noto Sans Tamil', sans-serif; font-size:.82rem;
-    color:var(--ink-soft);
+    margin-top:12px; padding-top:10px; border-top:1px dashed var(--border);
+    font-size:.85em; color:var(--text-soft);
   }
   .grade-pill{
     display:inline-block; padding:2px 10px; border-radius:20px;
-    font-weight:600; font-size:.8rem; margin-left:4px;
+    font-weight:600; font-size:.92em; margin-left:4px;
   }
   .grade-green{color:var(--green-grade); background:var(--green-grade-bg);}
   .grade-blue{color:var(--blue-grade); background:var(--blue-grade-bg);}
@@ -276,25 +292,32 @@
 
   /* ---------- states ---------- */
   .state-box{
-    font-family:'Noto Sans Tamil', sans-serif;
-    color:var(--ink-soft); font-size:.95rem;
+    color:var(--text-soft); font-size:.95rem;
     padding:30px 0;
   }
-  .state-box.error{color:var(--amber-grade);}
-  .state-box code{
-    background:var(--paper-2); padding:1px 6px; border-radius:4px;
-    font-size:.88em;
+  .state-box.error{
+    color:var(--amber-grade);
+    background:var(--amber-grade-bg);
+    border:1px solid #F2D6B3;
+    border-radius:var(--radius);
+    padding:16px 18px;
   }
-  .progress-line{
-    font-family:'Noto Sans Tamil', sans-serif; font-size:.82rem;
-    color:var(--ink-faint); margin-bottom:16px;
+  .state-box code{
+    background:var(--surface-2); padding:1px 6px; border-radius:4px;
+    font-size:.88em; color:var(--text);
+  }
+  .search-warn{
+    font-size:.82rem; color:var(--amber-grade);
+    background:var(--amber-grade-bg); border:1px solid #F2D6B3;
+    border-radius:var(--radius-sm); padding:10px 14px; margin-bottom:18px;
   }
 
   @media (max-width:560px){
-    fieldset.search-modes{gap:10px;}
+    fieldset.search-modes{gap:8px;}
     .search-row{flex-direction:column;}
     .search-row button{padding:10px 20px;}
-    .hero h1{font-size:1.6rem;}
+    .hero h1{font-size:1.5rem;}
+    .brand .subtitle{display:none;}
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -307,9 +330,17 @@
 <header class="site-head">
   <div class="head-row">
     <a class="brand" href="#/" data-nav-home>
-      <span class="title">தமிழ் ஹதீஸ் தொகுப்பு</span>
-      <span class="subtitle">நபிமொழி தேடல் &amp; வாசிப்பு நூலகம்</span>
+      <span class="mark">ஹ</span>
+      <span class="titles">
+        <span class="title">தமிழ் ஹதீஸ் தொகுப்பு</span>
+        <span class="subtitle">நபிமொழி தேடல் &amp; வாசிப்பு நூலகம்</span>
+      </span>
     </a>
+    <div class="font-ctrl ui" title="ஹதீஸ் எழுத்து அளவு">
+      <button type="button" id="font-dec">A-</button>
+      <span class="lbl">எழுத்து அளவு</span>
+      <button type="button" id="font-inc">A+</button>
+    </div>
   </div>
 </header>
 
@@ -323,11 +354,14 @@
 
   var DATA_DIR = "tamilhadith_data/";
   var MANIFEST_URL = DATA_DIR + "manifest.json";
+  var FONT_SCALE_KEY = "tamilhadith-font-scale";
+  var FONT_SCALE_MIN = 0.8, FONT_SCALE_MAX = 1.7, FONT_SCALE_STEP = 0.1;
 
   var app = document.getElementById("app");
-  var manifest = null;          // array of filenames
-  var bookCache = {};           // filename -> parsed book object
-  var selectedFiles = new Set();// checked filenames on home page
+  var manifest = null;            // array of filenames
+  var bookCache = {};             // filename -> parsed book object
+  var selectedFiles = new Set();  // checked filenames on home page
+  var lastBookErrors = {};        // filename -> {kind, attempts, detail}
 
   // ---------------- generic helpers ----------------
 
@@ -363,36 +397,68 @@
   function loading(msg){ setApp('<div class="state-box">' + escapeHtml(msg || "ஏற்றுகிறது…") + '</div>'); }
   function errorBox(msg){ setApp('<div class="state-box error">' + msg + '</div>'); }
   function navigate(hash){ location.hash = hash; }
+  function chapterKeyOf(entry){ return fieldOf(entry, "அத்தியாயம்") + "||" + fieldOf(entry, "அத்தியாய தலைப்பு"); }
 
-  // ---------------- search: word parsing & matching ----------------
+  // ---------------- per-user font size (client-side only) ----------------
 
-  // "all"   -> every non-excluded word must appear
-  // "any"   -> at least one non-excluded word must appear
-  // "phrase"-> the whole (trimmed) query must appear as a literal substring
-  // A leading "-" on a word (in all/any modes) excludes entries containing it.
-  function splitWords(q){
-    return String(q || "").trim().split(/\s+/).filter(Boolean);
+  function getFontScale(){
+    var v = parseFloat(localStorage.getItem(FONT_SCALE_KEY));
+    return isNaN(v) ? 1 : v;
+  }
+  function setFontScale(v){
+    v = Math.max(FONT_SCALE_MIN, Math.min(FONT_SCALE_MAX, v));
+    document.documentElement.style.setProperty("--hf-scale", v.toFixed(2));
+    try { localStorage.setItem(FONT_SCALE_KEY, v.toFixed(2)); } catch (e) {}
+  }
+  setFontScale(getFontScale());
+  document.getElementById("font-inc").addEventListener("click", function(){ setFontScale(getFontScale() + FONT_SCALE_STEP); });
+  document.getElementById("font-dec").addEventListener("click", function(){ setFontScale(getFontScale() - FONT_SCALE_STEP); });
+
+  // ---------------- search: quoted phrases, all/any/phrase, exclude ----------------
+
+  // Tokenizes a query into {text, exclude} parts.
+  // "quoted text" (optionally preceded by -) counts as ONE token, spaces and all.
+  // Unquoted runs of non-space characters (optionally preceded by -) are separate tokens.
+  function tokenizeQuery(q){
+    var tokens = [];
+    var re = /(-)?"([^"]*)"|(-)?(\S+)/g;
+    var m;
+    while ((m = re.exec(String(q || ""))) !== null){
+      if (m[2] !== undefined && m[2] !== ""){
+        tokens.push({text: m[2], exclude: m[1] === "-"});
+      } else if (m[4] !== undefined){
+        tokens.push({text: m[4], exclude: m[3] === "-"});
+      }
+    }
+    return tokens;
   }
 
   function parseIncludeExclude(q){
     var include = [], exclude = [];
-    splitWords(q).forEach(function(w){
-      if (w.length > 1 && w.charAt(0) === "-") exclude.push(w.slice(1));
-      else include.push(w);
+    tokenizeQuery(q).forEach(function(tok){
+      if (tok.exclude) exclude.push(tok.text); else include.push(tok.text);
     });
     return {include: include, exclude: exclude};
   }
 
+  function stripOuterQuotes(q){
+    var t = String(q || "").trim();
+    if (t.length >= 2 && t.charAt(0) === '"' && t.charAt(t.length - 1) === '"'){
+      return t.slice(1, -1);
+    }
+    return t;
+  }
+
   function isPureNumber(q){ return /^\d+$/.test(String(q || "").trim()); }
 
-  // Returns {matched: bool, highlightTerms: [words to mark]}
+  // Returns {matched: bool, highlightTerms: [strings to mark]}
   function evaluateQuery(haystack, mode, rawQuery){
-    var q = String(rawQuery || "").trim();
     if (mode === "phrase"){
-      var matched = haystack.indexOf(q) !== -1;
-      return {matched: matched, highlightTerms: matched ? [q] : []};
+      var phrase = stripOuterQuotes(rawQuery);
+      var matched = phrase !== "" && haystack.indexOf(phrase) !== -1;
+      return {matched: matched, highlightTerms: matched ? [phrase] : []};
     }
-    var pe = parseIncludeExclude(q);
+    var pe = parseIncludeExclude(rawQuery);
     if (pe.exclude.some(function(w){ return haystack.indexOf(w) !== -1; })){
       return {matched: false, highlightTerms: []};
     }
@@ -417,7 +483,7 @@
 
   // ---------------- hadith rendering ----------------
 
-  function renderHadithBody(numberLabel, rawText, highlightTerms){
+  function renderHadithBody(numberLabel, rawText, highlightTerms, numLinkHref){
     var marked = highlightRaw(rawText, highlightTerms);
     var esc = escapeHtml(marked);
     var blocks = esc.split(/\n\s*\n+/);
@@ -429,7 +495,10 @@
 
     if (paras.length === 0) paras = [""];
 
-    var numHtml = '<span class="hadith-num">' + escapeHtml(numberLabel) + '.</span> ';
+    var numInner = escapeHtml(numberLabel) + ".";
+    var numHtml = numLinkHref
+      ? '<a class="hadith-num hadith-num-link" href="' + escapeHtml(numLinkHref) + '" title="இந்த நூலில் திற">' + numInner + '</a> '
+      : '<span class="hadith-num">' + numInner + '</span> ';
     paras[0] = numHtml + '<span class="hadith-text">' + paras[0] + '</span>';
     for (var i = 1; i < paras.length; i++){
       paras[i] = '<span class="hadith-text">' + paras[i] + '</span>';
@@ -438,16 +507,23 @@
     return html.split("\u0001").join("<mark>").split("\u0002").join("</mark>");
   }
 
-  function hadithCardHtml(entry, key, highlightTerms){
+  // linkInfo: null (plain, used when already browsing inside the book) or
+  // {file, chapterKey} (used only in search results) to make the hadith
+  // number a link back into the book, landing on and scrolling to that hadith.
+  function hadithCardHtml(entry, key, highlightTerms, linkInfo){
     var topic = fieldOf(entry, "பாட தலைப்பு");
     var grade = fieldOf(entry, "ஹதீஸ் தரம்");
-    var html = '<article class="hadith-card">';
+    var numLinkHref = linkInfo
+      ? ("#/book/" + encodeURIComponent(linkInfo.file) + "/chapter/" + encodeURIComponent(linkInfo.chapterKey) + "?h=" + encodeURIComponent(key))
+      : null;
+
+    var html = '<article class="hadith-card" id="hadith-' + escapeHtml(key) + '">';
     if (topic && String(topic).trim() !== ""){
       var topicMarked = highlightRaw(topic, highlightTerms);
       var topicHtml = escapeHtml(topicMarked).split("\u0001").join("<mark>").split("\u0002").join("</mark>");
       html += '<h3 class="hadith-topic">' + topicHtml + '</h3>';
     }
-    html += renderHadithBody(key, fieldOf(entry, "ஹதீஸ்"), highlightTerms);
+    html += renderHadithBody(key, fieldOf(entry, "ஹதீஸ்"), highlightTerms, numLinkHref);
     if (grade && String(grade).trim() !== ""){
       html += '<p class="hadith-grade">ஹதீஸ் தரம்: <span class="grade-pill ' + gradeClass(grade) + '">' + escapeHtml(grade) + '</span></p>';
     }
@@ -469,11 +545,10 @@
     });
   }
 
-  // GitHub often stores uploaded filenames in a different Unicode
-  // normalization form (NFD) than what you typed into manifest.json (usually
-  // NFC), especially after uploading via the web UI or from macOS. The bytes
-  // differ even though the text looks identical, so a naive fetch 404s. We
-  // try a few normalized variants of the filename before giving up.
+  // GitHub sometimes stores an uploaded filename in a different Unicode
+  // normalization form than what's typed into manifest.json. The bytes
+  // differ even though the text looks identical, so a naive fetch 404s.
+  // We try a couple of normalized variants before giving up.
   function filenameCandidates(filename){
     var set = [filename];
     try {
@@ -481,19 +556,32 @@
       var nfd = filename.normalize("NFD");
       if (set.indexOf(nfc) === -1) set.push(nfc);
       if (set.indexOf(nfd) === -1) set.push(nfd);
-    } catch (e) { /* String.normalize unsupported: ignore, use original only */ }
+    } catch (e) { /* String.normalize unsupported: use original only */ }
     return set;
   }
 
   function fetchBookVariant(filename){
     var url = DATA_DIR + filename.split("/").map(encodeURIComponent).join("/");
     return fetch(url, {cache:"no-store"}).then(function(res){
-      if (!res.ok) throw new Error("http-" + res.status);
-      return res.json();
-    }).then(function(data){ return {data:data, url:url}; });
+      if (!res.ok){
+        var eNotFound = new Error("http-" + res.status);
+        eNotFound.kind = "not-found";
+        eNotFound.url = url;
+        throw eNotFound;
+      }
+      return res.text().then(function(text){
+        try {
+          return {data: JSON.parse(text), url: url};
+        } catch (parseErr){
+          var eBad = new Error("invalid-json");
+          eBad.kind = "invalid-json";
+          eBad.url = url;
+          eBad.detail = parseErr.message;
+          throw eBad;
+        }
+      });
+    });
   }
-
-  var lastBookAttempts = {}; // filename -> array of URLs tried, for diagnostics
 
   function loadBook(filename){
     if (bookCache[filename]) return Promise.resolve(bookCache[filename]);
@@ -502,13 +590,23 @@
 
     function tryNext(i){
       if (i >= candidates.length){
-        lastBookAttempts[filename] = attempted;
-        throw new Error("book-missing:" + filename);
+        var e = new Error("book-not-found:" + filename);
+        e.kind = "not-found";
+        e.attempts = attempted;
+        lastBookErrors[filename] = e;
+        throw e;
       }
       var variant = candidates[i];
       var url = DATA_DIR + variant.split("/").map(encodeURIComponent).join("/");
       attempted.push(url);
-      return fetchBookVariant(variant).catch(function(){ return tryNext(i + 1); });
+      return fetchBookVariant(variant).catch(function(err){
+        if (err && err.kind === "invalid-json"){
+          err.attempts = attempted;
+          lastBookErrors[filename] = err;
+          throw err; // found the file — stop trying other variants
+        }
+        return tryNext(i + 1);
+      });
     }
 
     return Promise.resolve(tryNext(0)).then(function(result){
@@ -541,19 +639,26 @@
     return order.map(function(ck){ return map[ck]; });
   }
 
-  function bookMissingHelp(filename){
-    var tried = lastBookAttempts[filename] || [DATA_DIR + filename];
+  function bookErrorHelp(filename, err){
+    if (err && err.kind === "invalid-json"){
+      return (
+        "இந்த நூலின் கோப்பு <code>" + escapeHtml(err.url) + "</code> கிடைத்தது, ஆனால் அதற்குள் இருக்கும் " +
+        "<b>JSON சரியாக இல்லை (invalid JSON)</b> — எனவே படிக்க முடியவில்லை." +
+        (err.detail ? "<br><br>பிழை விவரம்: <code>" + escapeHtml(err.detail) + "</code>" : "") +
+        "<br><br>கோப்பை <a href=\"https://jsonlint.com/\" target=\"_blank\" rel=\"noopener\">jsonlint.com</a> போன்ற ஒரு " +
+        "JSON validator-ல் ஒட்டிச் சரிபார்க்கவும் — பொதுவாக curly quotes (“ ”) நேரடியான quotes (\") ஆக இல்லாதது, " +
+        "கடைசி entry-க்குப் பிறகு கூடுதல் காற்புள்ளி (,), அல்லது மூடப்படாத அடைப்புக்குறி ஆகியவை இதற்குக் காரணமாக இருக்கும்."
+      );
+    }
+    var tried = (err && err.attempts) || [DATA_DIR + filename];
     var triedHtml = tried.map(function(u){ return "<li><code>" + escapeHtml(u) + "</code></li>"; }).join("");
     return (
       "இந்த நூலின் தரவுக் கோப்பைப் பெற முடியவில்லை. பின்வரும் முகவரி(கள்) முயற்சிக்கப்பட்டன:" +
       "<ul style='margin:8px 0 14px;padding-left:20px'>" + triedHtml + "</ul>" +
-      "பெரும்பாலும் இது பின்வரும் காரணங்களில் ஒன்றால் நிகழும்:" +
-      "<ul style='margin:8px 0 0;padding-left:20px'>" +
-      "<li><b>manifest.json</b>-ல் உள்ள பெயரும் GitHub-ல் பதிவேற்றப்பட்ட உண்மையான கோப்புப் பெயரும் " +
-      "எழுத்துக்கு எழுத்து ஒரே மாதிரி இல்லை (கூடுதல்/குறைந்த இடைவெளி, . அல்லது - வேறுபாடு).</li>" +
-      "<li>GitHub Pages புதிய கோப்பை இன்னும் வெளியிடவில்லை — push செய்த பிறகு 1–2 நிமிடம் காத்திருந்து மீண்டும் முயற்சிக்கவும்.</li>" +
-      "<li>கோப்பு <code>pages/tamilhadith_data/</code> கோப்புறைக்கு வெளியே அல்லது வேறு பெயரில் உள்ளது.</li>" +
-      "</ul>"
+      "பெரும்பாலும் இது பின்வரும் காரணங்களில் ஒன்றால் நிகழும்: manifest.json-ல் உள்ள பெயரும் GitHub-ல் பதிவேற்றப்பட்ட " +
+      "உண்மையான கோப்புப் பெயரும் எழுத்துக்கு எழுத்து ஒரே மாதிரி இல்லை, GitHub Pages புதிய கோப்பை இன்னும் " +
+      "வெளியிடவில்லை (1–2 நிமிடம் காத்திருந்து முயற்சிக்கவும்), அல்லது கோப்பு <code>pages/tamilhadith_data/</code> " +
+      "கோப்புறைக்கு வெளியே உள்ளது."
     );
   }
 
@@ -573,7 +678,7 @@
         '<h2>ஹதீஸ் தேடல்</h2>' +
         '<form class="ui" id="sp-form">' +
           '<div class="search-row">' +
-            '<input type="search" id="sp-query" placeholder="வார்த்தை, சொற்றொடர் அல்லது ஹதீஸ் எண்ணை உள்ளிடவும்…">' +
+            '<input type="search" id="sp-query" placeholder="வார்த்தை, &quot;சொற்றொடர்&quot; அல்லது ஹதீஸ் எண்ணை உள்ளிடவும்…">' +
             '<button type="submit">தேடு</button>' +
           '</div>' +
           '<fieldset class="search-modes">' +
@@ -587,11 +692,10 @@
           '</div>' +
           scopeControl +
           '<p class="search-hint">' +
-            '<b>எடுத்துக்காட்டுகள்:</b> ' +
-            '“நோன்பு நீர்” + அனைத்து வார்த்தைகளும் — இரண்டு வார்த்தையும் உள்ள ஹதீஸ்களை மட்டும் காட்டும். ' +
-            '“நோன்பு நீர்” + ஏதேனும் ஒன்று — ஏதேனும் ஒரு வார்த்தை உள்ள அனைத்தையும் காட்டும். ' +
-            '“தூய்மையின்றி எந்தத் தொழுகையும்” + சொற்றொடர் — அப்படியே அந்த சொற்றொடர் உள்ளவற்றை மட்டும் காட்டும். ' +
-            '“-கனவு” எனத் தொடங்கும் வார்த்தை அந்த வார்த்தை இல்லாதவற்றை மட்டும் காட்ட உதவும். ' +
+            '<b>எடுத்துக்காட்டுகள்:</b> <code>நோன்பு நீர்</code> + அனைத்து வார்த்தைகளும் — இரண்டு வார்த்தையும் உள்ளவற்றை மட்டும் காட்டும். ' +
+            '<code>நோன்பு நீர்</code> + ஏதேனும் ஒன்று — ஏதேனும் ஒரு வார்த்தை உள்ள அனைத்தையும் காட்டும். ' +
+            'மேற்கோள் குறிக்குள் இட்டால் — <code>&quot;நோன்பு நீர்&quot;</code> — அது ஒரே சொற்றொடராகவே தேடப்படும் (ஏதேனும் ஒன்று என்ற முறையிலும் கூட). ' +
+            '<code>-கனவு</code> அல்லது <code>-&quot;நோன்பு நீர்&quot;</code> எனத் தொடங்கினால் அது இல்லாதவை மட்டும் காட்டப்படும். ' +
             'ஹதீஸ் எண்ணை மட்டும் (எ.கா. <b>23</b>) உள்ளிட்டால் நேரடியாக அந்த எண் கொண்ட ஹதீஸ் காட்டப்படும்.' +
           '</p>' +
         '</form>' +
@@ -644,7 +748,7 @@
     if (segs[0] === "book" && segs[1]){
       var file = decodeURIComponent(segs[1]);
       if (segs[2] === "chapter" && segs[3]){
-        return viewChapter(file, decodeURIComponent(segs[3]));
+        return viewChapter(file, decodeURIComponent(segs[3]), params.get("h") || "");
       }
       return viewBook(file);
     }
@@ -743,22 +847,24 @@
     }
   }
 
+  function resolveBookTitle(data, fallback){
+    var firstKey = Object.keys(data)[0];
+    if (firstKey && fieldOf(data[firstKey], "நூல்")) return fieldOf(data[firstKey], "நூல்");
+    return fallback;
+  }
+
   function viewBook(file){
     loading("நூல் ஏற்றப்படுகிறது…");
     loadBook(file).then(function(data){
       var chapters = buildChapters(data);
       var total = Object.keys(data).length;
-      var bookTitle = titleFromFilename(file);
-      var firstKey = Object.keys(data)[0];
-      if (firstKey && fieldOf(data[firstKey], "நூல்")) {
-        bookTitle = fieldOf(data[firstKey], "நூல்");
-      }
+      var bookTitle = resolveBookTitle(data, titleFromFilename(file));
 
       var rows = chapters.map(function(ch){
         return (
           '<tr data-chapter="' + escapeHtml(ch.key) + '">' +
             '<td class="ch-num">' + escapeHtml(ch.num || "—") + '</td>' +
-            '<td class="ch-title">' + (ch.title ? escapeHtml(ch.title) : '<span class="ui" style="color:var(--ink-faint)">(தலைப்பு இல்லை)</span>') + '</td>' +
+            '<td class="ch-title">' + (ch.title ? escapeHtml(ch.title) : '<span class="ui" style="color:var(--text-faint)">(தலைப்பு இல்லை)</span>') + '</td>' +
             '<td class="ch-count">' + ch.keys.length + '</td>' +
           '</tr>'
         );
@@ -783,29 +889,27 @@
           navigate("#/book/" + encodeURIComponent(file) + "/chapter/" + encodeURIComponent(ck));
         });
       });
-    }).catch(function(){
-      errorBox(bookMissingHelp(file));
+    }).catch(function(err){
+      errorBox(bookErrorHelp(file, err));
     });
   }
 
-  function viewChapter(file, chapterKey){
+  function viewChapter(file, chapterKey, focusKey){
     loading("அத்தியாயம் ஏற்றப்படுகிறது…");
     loadBook(file).then(function(data){
       var chapters = buildChapters(data);
       var chapter = chapters.filter(function(c){ return c.key === chapterKey; })[0];
-      var bookTitle = titleFromFilename(file);
-      var firstKey = Object.keys(data)[0];
-      if (firstKey && fieldOf(data[firstKey], "நூல்")) {
-        bookTitle = fieldOf(data[firstKey], "நூல்");
-      }
+      var bookTitle = resolveBookTitle(data, titleFromFilename(file));
 
       if (!chapter){
         errorBox("இந்த அத்தியாயம் கிடைக்கவில்லை.");
         return;
       }
 
+      // Plain (non-linking) cards — we're already inside the book, so the
+      // hadith number should NOT be a link here.
       var cards = chapter.keys.map(function(k){
-        return hadithCardHtml(data[k], k, []);
+        return hadithCardHtml(data[k], k, [], null);
       }).join("");
 
       setApp(
@@ -820,8 +924,19 @@
       );
 
       wireSearchPanel({scopeType:"book", file:file});
-    }).catch(function(){
-      errorBox(bookMissingHelp(file));
+
+      if (focusKey){
+        var target = document.getElementById("hadith-" + focusKey);
+        if (target){
+          setTimeout(function(){
+            target.scrollIntoView({behavior:"smooth", block:"center"});
+            target.classList.add("hadith-focus");
+            setTimeout(function(){ target.classList.remove("hadith-focus"); }, 3000);
+          }, 60);
+        }
+      }
+    }).catch(function(err){
+      errorBox(bookErrorHelp(file, err));
     });
   }
 
@@ -846,6 +961,7 @@
 
       var numericQuery = isPureNumber(query) ? parseInt(query, 10) : null;
       var results = [];
+      var skipped = [];
       var loadedCount = 0;
 
       function step(){
@@ -856,9 +972,7 @@
         var f = files[loadedCount];
         loading("தேடுகிறது… (" + (loadedCount + 1) + " / " + files.length + " நூல்கள்)");
         loadBook(f).then(function(data){
-          var bookTitle = titleFromFilename(f);
-          var firstKey = Object.keys(data)[0];
-          if (firstKey && fieldOf(data[firstKey], "நூல்")) bookTitle = fieldOf(data[firstKey], "நூல்");
+          var bookTitle = resolveBookTitle(data, titleFromFilename(f));
 
           Object.keys(data).forEach(function(hKey){
             var entry = data[hKey];
@@ -867,7 +981,7 @@
               var kNum = parseInt(hKey, 10);
               if (!isNaN(kNum) && kNum === numericQuery){
                 results.push({file:f, bookTitle:bookTitle, key:hKey, entry:entry, highlightTerms:[],
-                  chapterTitle: fieldOf(entry, "அத்தியாய தலைப்பு")});
+                  chapterKey: chapterKeyOf(entry), chapterTitle: fieldOf(entry, "அத்தியாய தலைப்பு")});
               }
               return;
             }
@@ -880,12 +994,13 @@
             if (res.matched){
               results.push({
                 file:f, bookTitle:bookTitle, key:hKey, entry:entry, highlightTerms:res.highlightTerms,
-                chapterTitle: fieldOf(entry, "அத்தியாய தலைப்பு")
+                chapterKey: chapterKeyOf(entry), chapterTitle: fieldOf(entry, "அத்தியாய தலைப்பு")
               });
             }
           });
-        }).catch(function(){ /* skip missing book, continue search */ })
-          .then(function(){ loadedCount++; step(); });
+        }).catch(function(err){
+          skipped.push({file:f, bookTitle:titleFromFilename(f), err:err});
+        }).then(function(){ loadedCount++; step(); });
       }
 
       var modeLabel = mode === "any" ? "ஏதேனும் ஒரு வார்த்தை" : (mode === "phrase" ? "சரியான சொற்றொடர்" : "அனைத்து வார்த்தைகளும்");
@@ -895,8 +1010,17 @@
           '<h1 class="page-title">“' + escapeHtml(query) + '” — தேடல் முடிவுகள்</h1>' +
           '<p class="page-meta">' + results.length + ' முடிவுகள் · ' + files.length + ' நூல்(கள்) தேடப்பட்டன · முறை: ' + escapeHtml(modeLabel) + '</p>';
 
+        var warn = "";
+        if (skipped.length){
+          var items = skipped.map(function(s){
+            var reason = (s.err && s.err.kind === "invalid-json") ? "தவறான JSON" : "கோப்பு கிடைக்கவில்லை";
+            return escapeHtml(s.bookTitle) + " (" + reason + ")";
+          }).join(", ");
+          warn = '<p class="search-warn">இந்த நூல்(கள்) தேடலில் சேர்க்கப்படவில்லை: ' + items + '</p>';
+        }
+
         if (results.length === 0){
-          setApp(heading + '<div class="state-box">பொருந்தும் ஹதீஸ் எதுவும் கிடைக்கவில்லை.</div>');
+          setApp(heading + warn + '<div class="state-box">பொருந்தும் ஹதீஸ் எதுவும் கிடைக்கவில்லை.</div>');
           return;
         }
 
@@ -905,11 +1029,11 @@
             '<p class="result-crumb">' + escapeHtml(r.bookTitle) +
               (r.chapterTitle ? ' · ' + escapeHtml(r.chapterTitle) : '') +
             '</p>' +
-            hadithCardHtml(r.entry, r.key, r.highlightTerms)
+            hadithCardHtml(r.entry, r.key, r.highlightTerms, {file:r.file, chapterKey:r.chapterKey})
           );
         }).join("");
 
-        setApp(heading + body);
+        setApp(heading + warn + body);
       }
 
       step();
