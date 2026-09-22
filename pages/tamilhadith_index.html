@@ -91,7 +91,8 @@
   }
 
   /* ---------- layout ---------- */
-  main{max-width:var(--maxw); margin:0 auto; padding:26px 20px 80px;}
+  main{max-width:var(--maxw); margin:0 auto; padding:26px 20px 80px; transition:max-width .15s ease;}
+  main.wide-home{max-width:1040px;}
 
   .crumbs{
     font-size:.82rem; color:var(--text-faint);
@@ -189,27 +190,33 @@
   }
   .list-toolbar .toolbar-actions .sep{color:var(--text-faint); margin:0 2px;}
 
-  ul.book-list{list-style:none; margin:0; padding:0;}
+  ul.book-list{
+    list-style:none; margin:0; padding:0;
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));
+    gap:12px;
+  }
   ul.book-list li{
+    position:relative;
     background:var(--surface); border:1px solid var(--border);
     border-radius:var(--radius-sm);
-    padding:13px 14px; margin-bottom:10px;
-    display:flex; align-items:flex-start; gap:12px;
+    padding:16px 34px 14px 14px;
+    display:flex; flex-direction:column;
   }
   ul.book-list li:hover{border-color:var(--primary);}
   ul.book-list input[type="checkbox"]{
-    margin-top:5px; width:16px; height:16px; accent-color:var(--primary);
-    flex:0 0 auto;
+    position:absolute; top:14px; right:12px;
+    width:16px; height:16px; accent-color:var(--primary);
   }
   ul.book-list .book-link{
-    flex:1; text-decoration:none; color:var(--text); cursor:pointer;
+    text-decoration:none; color:var(--text); cursor:pointer;
   }
   ul.book-list .book-name{
-    font-size:1.04rem; font-weight:700; color:var(--text);
+    font-size:1.02rem; font-weight:700; color:var(--text); line-height:1.35;
   }
   ul.book-list .book-link:hover .book-name{color:var(--primary);}
   ul.book-list .book-sub{
-    font-size:.78rem; color:var(--text-faint); margin-top:2px;
+    font-size:.76rem; color:var(--text-faint); margin-top:5px;
   }
   .selection-note{
     font-size:.8rem; color:var(--text-soft); margin:14px 0 26px;
@@ -746,6 +753,7 @@
     var segs = r.segs, params = r.params;
 
     if (segs[0] === "book" && segs[1]){
+      app.classList.remove("wide-home");
       var file = decodeURIComponent(segs[1]);
       if (segs[2] === "chapter" && segs[3]){
         return viewChapter(file, decodeURIComponent(segs[3]), params.get("h") || "");
@@ -753,6 +761,7 @@
       return viewBook(file);
     }
     if (segs[0] === "search"){
+      app.classList.remove("wide-home");
       return viewSearch(
         params.get("q") || "",
         params.get("books") || "",
@@ -760,6 +769,7 @@
         params.get("titles") === "1"
       );
     }
+    app.classList.add("wide-home");
     return viewHome();
   }
 
