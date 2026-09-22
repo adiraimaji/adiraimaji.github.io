@@ -469,15 +469,51 @@
     });
   }
 
-  function loadBook(filename){
-    if (bookCache[filename]) return Promise.resolve(bookCache[filename]);
+  // GitHub often stores uploaded filenames in a different Unicode
+  // normalization form (NFD) than what you typed into manifest.json (usually
+  // NFC), especially after uploading via the web UI or from macOS. The bytes
+  // differ even though the text looks identical, so a naive fetch 404s. We
+  // try a few normalized variants of the filename before giving up.
+  function filenameCandidates(filename){
+    var set = [filename];
+    try {
+      var nfc = filename.normalize("NFC");
+      var nfd = filename.normalize("NFD");
+      if (set.indexOf(nfc) === -1) set.push(nfc);
+      if (set.indexOf(nfd) === -1) set.push(nfd);
+    } catch (e) { /* String.normalize unsupported: ignore, use original only */ }
+    return set;
+  }
+
+  function fetchBookVariant(filename){
     var url = DATA_DIR + filename.split("/").map(encodeURIComponent).join("/");
     return fetch(url, {cache:"no-store"}).then(function(res){
-      if (!res.ok) throw new Error("book-missing:" + filename);
+      if (!res.ok) throw new Error("http-" + res.status);
       return res.json();
-    }).then(function(data){
-      bookCache[filename] = data;
-      return data;
+    }).then(function(data){ return {data:data, url:url}; });
+  }
+
+  var lastBookAttempts = {}; // filename -> array of URLs tried, for diagnostics
+
+  function loadBook(filename){
+    if (bookCache[filename]) return Promise.resolve(bookCache[filename]);
+    var candidates = filenameCandidates(filename);
+    var attempted = [];
+
+    function tryNext(i){
+      if (i >= candidates.length){
+        lastBookAttempts[filename] = attempted;
+        throw new Error("book-missing:" + filename);
+      }
+      var variant = candidates[i];
+      var url = DATA_DIR + variant.split("/").map(encodeURIComponent).join("/");
+      attempted.push(url);
+      return fetchBookVariant(variant).catch(function(){ return tryNext(i + 1); });
+    }
+
+    return Promise.resolve(tryNext(0)).then(function(result){
+      bookCache[filename] = result.data;
+      return result.data;
     });
   }
 
@@ -506,8 +542,19 @@
   }
 
   function bookMissingHelp(filename){
-    return "இந்த நூலின் தரவுக் கோப்பு கிடைக்கவில்லை: <code>" + escapeHtml(DATA_DIR + filename) +
-      "</code>. கோப்பு அந்தப் பெயரில் சரியாக பதிவேற்றப்பட்டுள்ளதா என சரிபார்க்கவும்.";
+    var tried = lastBookAttempts[filename] || [DATA_DIR + filename];
+    var triedHtml = tried.map(function(u){ return "<li><code>" + escapeHtml(u) + "</code></li>"; }).join("");
+    return (
+      "இந்த நூலின் தரவுக் கோப்பைப் பெற முடியவில்லை. பின்வரும் முகவரி(கள்) முயற்சிக்கப்பட்டன:" +
+      "<ul style='margin:8px 0 14px;padding-left:20px'>" + triedHtml + "</ul>" +
+      "பெரும்பாலும் இது பின்வரும் காரணங்களில் ஒன்றால் நிகழும்:" +
+      "<ul style='margin:8px 0 0;padding-left:20px'>" +
+      "<li><b>manifest.json</b>-ல் உள்ள பெயரும் GitHub-ல் பதிவேற்றப்பட்ட உண்மையான கோப்புப் பெயரும் " +
+      "எழுத்துக்கு எழுத்து ஒரே மாதிரி இல்லை (கூடுதல்/குறைந்த இடைவெளி, . அல்லது - வேறுபாடு).</li>" +
+      "<li>GitHub Pages புதிய கோப்பை இன்னும் வெளியிடவில்லை — push செய்த பிறகு 1–2 நிமிடம் காத்திருந்து மீண்டும் முயற்சிக்கவும்.</li>" +
+      "<li>கோப்பு <code>pages/tamilhadith_data/</code> கோப்புறைக்கு வெளியே அல்லது வேறு பெயரில் உள்ளது.</li>" +
+      "</ul>"
+    );
   }
 
   // ---------------- search panel (shared component) ----------------
