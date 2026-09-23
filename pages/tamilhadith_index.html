@@ -405,6 +405,29 @@
     return entry && Object.prototype.hasOwnProperty.call(entry, name) ? entry[name] : "";
   }
 
+  // A book file can be either:
+  //  - an object keyed by hadith number: {"0001": {...}, "0002": {...}}
+  //  - an array of entries, each carrying its own "ஹதீஸ் எண்" field: [{...}, {...}]
+  // Everything downstream works off this normalized list of {key, entry}.
+  function bookEntries(bookData){
+    if (Array.isArray(bookData)){
+      return bookData.map(function(entry, idx){
+        var num = fieldOf(entry, "ஹதீஸ் எண்");
+        var key = (num !== undefined && num !== null && String(num).trim() !== "")
+          ? String(num).trim()
+          : String(idx + 1);
+        return {key: key, entry: entry};
+      });
+    }
+    return Object.keys(bookData).map(function(k){ return {key: k, entry: bookData[k]}; });
+  }
+
+  function entryMapOf(bookData){
+    var map = {};
+    bookEntries(bookData).forEach(function(pair){ map[pair.key] = pair.entry; });
+    return map;
+  }
+
   function gradeClass(gradeRaw){
     var g = String(gradeRaw || "");
     if (g.indexOf("ளயீஃப்") !== -1 || g.indexOf("மவ்ளூவு") !== -1) return "grade-amber";
@@ -477,8 +500,8 @@
   }
 
   function collectGrades(bookData){
-    Object.keys(bookData).forEach(function(hKey){
-      noteGrade(fieldOf(bookData[hKey], "ஹதீஸ் தரம்"));
+    bookEntries(bookData).forEach(function(pair){
+      noteGrade(fieldOf(pair.entry, "ஹதீஸ் தரம்"));
     });
   }
 
@@ -650,8 +673,8 @@
   function buildChapters(bookData){
     var order = [];
     var map = {};
-    Object.keys(bookData).forEach(function(hKey){
-      var entry = bookData[hKey];
+    bookEntries(bookData).forEach(function(pair){
+      var hKey = pair.key, entry = pair.entry;
       var num = fieldOf(entry, "அத்தியாயம்");
       var title = fieldOf(entry, "அத்தியாய தலைப்பு");
       var ck = num + "||" + title;
@@ -936,8 +959,8 @@
   }
 
   function resolveBookTitle(data, fallback){
-    var firstKey = Object.keys(data)[0];
-    if (firstKey && fieldOf(data[firstKey], "நூல்")) return fieldOf(data[firstKey], "நூல்");
+    var pairs = bookEntries(data);
+    if (pairs.length && fieldOf(pairs[0].entry, "நூல்")) return fieldOf(pairs[0].entry, "நூல்");
     return fallback;
   }
 
@@ -945,7 +968,7 @@
     loading("நூல் ஏற்றப்படுகிறது…");
     loadBook(file).then(function(data){
       var chapters = buildChapters(data);
-      var total = Object.keys(data).length;
+      var total = bookEntries(data).length;
       var bookTitle = resolveBookTitle(data, titleFromFilename(file));
 
       var rows = chapters.map(function(ch){
@@ -996,8 +1019,9 @@
 
       // Plain (non-linking) cards — we're already inside the book, so the
       // hadith number should NOT be a link here.
+      var entryMap = entryMapOf(data);
       var cards = chapter.keys.map(function(k){
-        return hadithCardHtml(data[k], k, [], null);
+        return hadithCardHtml(entryMap[k], k, [], null);
       }).join("");
 
       setApp(
@@ -1072,8 +1096,8 @@
         loadBook(f).then(function(data){
           var bookTitle = resolveBookTitle(data, titleFromFilename(f));
 
-          Object.keys(data).forEach(function(hKey){
-            var entry = data[hKey];
+          bookEntries(data).forEach(function(pair){
+            var hKey = pair.key, entry = pair.entry;
 
             if (!gradeMatches(entry)) return;
 
