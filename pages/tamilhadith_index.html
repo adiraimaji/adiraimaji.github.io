@@ -409,6 +409,19 @@
   //  - an object keyed by hadith number: {"0001": {...}, "0002": {...}}
   //  - an array of entries, each carrying its own "ஹதீஸ் எண்" field: [{...}, {...}]
   // Everything downstream works off this normalized list of {key, entry}.
+  // A JS object's own keys that look like plain integers (e.g. "1774") are
+  // always enumerated in ascending numeric order *before* any other string
+  // key, no matter what order they were written in the JSON — this is a
+  // JavaScript engine rule, not something JSON.parse or our code chooses.
+  // A combined key like "1775, 1776" isn't a plain integer, so it gets
+  // shoved to the very end of Object.keys() instead of sitting between
+  // "1774" and "1777". We fix that by explicitly sorting every object-format
+  // book's keys by the first number found in each key.
+  function leadingNumber(key){
+    var m = String(key).match(/\d+/);
+    return m ? parseInt(m[0], 10) : Number.MAX_SAFE_INTEGER;
+  }
+
   function bookEntries(bookData){
     if (Array.isArray(bookData)){
       return bookData.map(function(entry, idx){
@@ -419,7 +432,8 @@
         return {key: key, entry: entry};
       });
     }
-    return Object.keys(bookData).map(function(k){ return {key: k, entry: bookData[k]}; });
+    var keys = Object.keys(bookData).sort(function(a, b){ return leadingNumber(a) - leadingNumber(b); });
+    return keys.map(function(k){ return {key: k, entry: bookData[k]}; });
   }
 
   function entryMapOf(bookData){
@@ -691,7 +705,19 @@
       if (isNaN(nb)) return -1;
       return na - nb;
     });
-    return order.map(function(ck){ return map[ck]; });
+    // Safety net: a hadith is grouped into its chapter correctly regardless
+    // of where it physically sits in the source file, but that alone doesn't
+    // guarantee it lands in the right *position* within that chapter if it
+    // was accidentally placed out of sequence (e.g. a chapter-01 hadith
+    // mistakenly written after chapter 02 has already started). Sorting each
+    // chapter's own hadith by their leading number fixes that, while still
+    // keeping combined entries like "1775, 1776" exactly between 1774 and
+    // 1777, since 1775 is what gets compared.
+    return order.map(function(ck){
+      var group = map[ck];
+      group.keys.sort(function(a, b){ return leadingNumber(a) - leadingNumber(b); });
+      return group;
+    });
   }
 
   function bookErrorHelp(filename, err){
