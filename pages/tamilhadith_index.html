@@ -201,11 +201,6 @@
   .search-extra label{display:flex; align-items:center; gap:6px; cursor:pointer;}
   .search-extra input[type="checkbox"]{accent-color:var(--primary);}
 
-  .grade-filter-row{align-items:flex-start;}
-  .grade-filter-label{color:var(--text-faint); font-size:.74rem; padding-top:5px;}
-  .grade-checks{display:flex; flex-wrap:wrap; gap:6px 14px;}
-  .grade-checks label{display:flex; align-items:center; gap:6px; color:var(--text-soft); cursor:pointer;}
-  .grade-checks input[type="checkbox"]{accent-color:var(--primary);}
   .search-extra select{
     border:1px solid var(--border); border-radius:6px; background:var(--surface);
     padding:5px 8px; font-family:inherit; font-size:.85rem; color:var(--text);
@@ -433,12 +428,6 @@
   var SHOW_ARABIC_KEY = "tamilhadith-show-arabic";
   var FONT_SCALE_MIN = 0.8, FONT_SCALE_MAX = 1.7, FONT_SCALE_STEP = 0.1;
 
-  // Set to false if you do NOT want every book downloaded in the background
-  // just to fill the "ஹதீஸ் தரம்" filter list (files are bigger now that they
-  // contain Arabic). The grade list will then only contain grades from books
-  // that have already been opened or searched.
-  var PREFETCH_GRADES = true;
-
   // Field names in the book JSON files (flat list of hadith records).
   var F = {
     bookTa:"book_name_ta", bookAr:"book_name_ar",
@@ -454,7 +443,6 @@
   var bookCache = {};             // filename -> parsed book (array of records)
   var selectedFiles = new Set();  // checked filenames on home page
   var lastBookErrors = {};        // filename -> {kind, attempts, detail}
-  var globalGrades = [];          // distinct Tamil grade values seen so far, in first-seen order
   var entriesMemo = (typeof WeakMap !== "undefined") ? new WeakMap() : null;
 
   // ---------------- generic helpers ----------------
@@ -602,17 +590,6 @@
   }
 
   function isPureNumber(q){ return /^\d+$/.test(String(q || "").trim()); }
-
-  function noteGrade(g){
-    var v = String(g || "").trim();
-    if (v && globalGrades.indexOf(v) === -1) globalGrades.push(v);
-  }
-
-  function collectGrades(bookData){
-    bookEntries(bookData).forEach(function(pair){
-      noteGrade(fieldOf(pair.entry, F.grade));
-    });
-  }
 
   // Returns {matched: bool, highlightTerms: [strings to mark]}
   function evaluateQuery(haystack, mode, rawQuery){
@@ -818,7 +795,6 @@
 
     return Promise.resolve(tryNext(0)).then(function(result){
       bookCache[filename] = result.data;
-      collectGrades(result.data);
       return result.data;
     });
   }
@@ -884,43 +860,6 @@
 
   // ---------------- search panel (shared component) ----------------
 
-  var GRADE_UNKNOWN = "__unknown__";
-
-  function gradeCheckboxesHtml(selectedSet){
-    var html = (
-      '<label><input type="checkbox" class="grade-check" value="' + GRADE_UNKNOWN + '"' +
-      (selectedSet.has(GRADE_UNKNOWN) ? " checked" : "") + '> தெரியாதவை (ஹதீஸ் தரம் குறிப்பிடப்படாதவை)</label>'
-    );
-    globalGrades.forEach(function(g){
-      html += '<label><input type="checkbox" class="grade-check" value="' + escapeHtml(g) + '"' +
-        (selectedSet.has(g) ? " checked" : "") + '> ' + escapeHtml(g) + '</label>';
-    });
-    return html;
-  }
-
-  // Re-populates the grade checkbox list as more books finish loading in the
-  // background, without losing whatever the visitor already ticked.
-  function refreshGradeCheckboxes(){
-    var container = document.getElementById("sp-grade-list");
-    if (!container) return;
-    var current = new Set();
-    container.querySelectorAll(".grade-check:checked").forEach(function(cb){ current.add(cb.value); });
-    container.innerHTML = gradeCheckboxesHtml(current);
-  }
-
-  // Loads every book in the background (independent of search scope) purely
-  // so the grade filter can eventually list every grade value that exists
-  // anywhere in the library. Safe to call repeatedly — loadBook and
-  // loadManifest both cache, so already-loaded books are skipped instantly.
-  function prefetchGradesInBackground(){
-    if (!PREFETCH_GRADES) return;
-    loadManifest().then(function(list){
-      list.forEach(function(f){
-        loadBook(f).then(refreshGradeCheckboxes).catch(function(){ /* ignore here; surfaced elsewhere */ });
-      });
-    }).catch(function(){});
-  }
-
   // opts: { scopeType: "home" } or { scopeType: "book", file, bookTitle }
   function searchPanelHtml(opts){
     var scopeControl = "";
@@ -947,18 +886,13 @@
           '<div class="search-extra">' +
             '<label><input type="checkbox" id="sp-titles"> அத்தியாயம் / பாடத் தலைப்புகளிலும் தேடு</label>' +
           '</div>' +
-          '<div class="search-extra grade-filter-row">' +
-            '<span class="grade-filter-label">ஹதீஸ் தரம்:</span>' +
-            '<span id="sp-grade-list" class="grade-checks">' + gradeCheckboxesHtml(new Set()) + '</span>' +
-          '</div>' +
           scopeControl +
           '<p class="search-hint">' +
             '<b>எடுத்துக்காட்டுகள்:</b> <code>நோன்பு நீர்</code> + அனைத்து வார்த்தைகளும் — இரண்டு வார்த்தையும் உள்ளவற்றை மட்டும் காட்டும். ' +
             '<code>நோன்பு நீர்</code> + ஏதேனும் ஒன்று — ஏதேனும் ஒரு வார்த்தை உள்ள அனைத்தையும் காட்டும். ' +
             'மேற்கோள் குறிக்குள் இட்டால் — <code>&quot;நோன்பு நீர்&quot;</code> — அது ஒரே சொற்றொடராகவே தேடப்படும் (ஏதேனும் ஒன்று என்ற முறையிலும் கூட). ' +
             '<code>-கனவு</code> அல்லது <code>-&quot;நோன்பு நீர்&quot;</code> எனத் தொடங்கினால் அது இல்லாதவை மட்டும் காட்டப்படும். ' +
-            'ஹதீஸ் எண்ணை மட்டும் (எ.கா. <b>23</b>) உள்ளிட்டால் நேரடியாக அந்த எண் கொண்ட ஹதீஸ் காட்டப்படும். ' +
-            'ஒன்று அல்லது பல ஹதீஸ் தரங்களைத் தேர்ந்தெடுக்கலாம் (ஏதேனும் ஒன்று பொருந்தினால் போதும்); வார்த்தை எதுவும் இல்லாமலேயே அவற்றை மட்டும் பட்டியலிடவும் முடியும். “தெரியாதவை” ஹதீஸ் தரம் புலம் காலியாக உள்ள ஹதீஸ்களைக் காட்டும்.' +
+            'ஹதீஸ் எண்ணை மட்டும் (எ.கா. <b>23</b>) உள்ளிட்டால் நேரடியாக அந்த எண் கொண்ட ஹதீஸ் காட்டப்படும்.' +
           '</p>' +
         '</form>' +
       '</section>'
@@ -971,8 +905,7 @@
     form.addEventListener("submit", function(e){
       e.preventDefault();
       var q = document.getElementById("sp-query").value.trim();
-      var gradeVals = Array.from(form.querySelectorAll(".grade-check:checked")).map(function(cb){ return cb.value; });
-      if (!q && gradeVals.length === 0) return;
+      if (!q) return;
       var mode = form.querySelector('input[name="sp-mode"]:checked').value;
       var titles = document.getElementById("sp-titles").checked ? "1" : "0";
 
@@ -986,18 +919,10 @@
         booksParam = allBooks ? "" : encodeURIComponent(opts.file);
       }
 
-      var gradesParam = gradeVals.length ? gradeVals.map(encodeURIComponent).join(",") : "";
-
       var hash = "#/search?q=" + encodeURIComponent(q) + "&mode=" + mode + "&titles=" + titles +
-        (gradesParam ? "&grades=" + gradesParam : "") +
         (booksParam ? "&books=" + booksParam : "");
       navigate(hash);
     });
-
-    // Show whatever grades we already know immediately, then keep
-    // improving the list in the background as more books load.
-    refreshGradeCheckboxes();
-    prefetchGradesInBackground();
   }
 
   // ---------------- routing ----------------
@@ -1026,14 +951,11 @@
     }
     if (segs[0] === "search"){
       app.classList.remove("wide-home");
-      var gradesRaw = params.get("grades") || "";
-      var gradeFilters = gradesRaw ? gradesRaw.split(",").map(decodeURIComponent).filter(Boolean) : [];
       return viewSearch(
         params.get("q") || "",
         params.get("books") || "",
         params.get("mode") || "all",
-        params.get("titles") === "1",
-        gradeFilters
+        params.get("titles") === "1"
       );
     }
     app.classList.add("wide-home");
@@ -1229,22 +1151,13 @@
     });
   }
 
-  function viewSearch(query, booksParam, mode, includeTitles, gradeFilter){
+  function viewSearch(query, booksParam, mode, includeTitles){
     query = (query || "").trim();
-    var gradeFilters = Array.isArray(gradeFilter) ? gradeFilter.filter(Boolean) : [];
     var targetFiles = booksParam ? booksParam.split(",").map(decodeURIComponent).filter(Boolean) : [];
 
-    if (!query && gradeFilters.length === 0){
-      errorBox("தேட வேண்டிய வார்த்தை, ஹதீஸ் எண் அல்லது ஹதீஸ் தரத்தைத் தேர்ந்தெடுக்கவும்.");
+    if (!query){
+      errorBox("தேட வேண்டிய வார்த்தை அல்லது ஹதீஸ் எண்ணை உள்ளிடவும்.");
       return;
-    }
-
-    function gradeMatches(entry){
-      if (gradeFilters.length === 0) return true;
-      var g = fieldOf(entry, F.grade).trim();
-      return gradeFilters.some(function(gf){
-        return gf === GRADE_UNKNOWN ? g === "" : g === gf;
-      });
     }
 
     loading("நூல் பட்டியல் ஏற்றப்படுகிறது…");
@@ -1257,8 +1170,7 @@
         return;
       }
 
-      var queryEmpty = query === "";
-      var numericQuery = (!queryEmpty && isPureNumber(query)) ? parseInt(query, 10) : null;
+      var numericQuery = isPureNumber(query) ? parseInt(query, 10) : null;
       var results = [];
       var skipped = [];
       var loadedCount = 0;
@@ -1280,13 +1192,6 @@
 
           bookEntries(data).forEach(function(pair){
             var hKey = pair.key, entry = pair.entry;
-
-            if (!gradeMatches(entry)) return;
-
-            if (queryEmpty){
-              pushResult(f, bookTitle, hKey, entry, []);
-              return;
-            }
 
             if (numericQuery !== null){
               // matches any number in hadith_no, so "334" finds "0333,0334"
@@ -1312,15 +1217,11 @@
       }
 
       var modeLabel = mode === "any" ? "ஏதேனும் ஒரு வார்த்தை" : (mode === "phrase" ? "சரியான சொற்றொடர்" : "அனைத்து வார்த்தைகளும்");
-      var gradeLabel = gradeFilters.map(function(gf){ return gf === GRADE_UNKNOWN ? "தெரியாதவை" : gf; }).join(", ");
 
       function renderResults(){
-        var titleText = queryEmpty
-          ? ('ஹதீஸ் தரம்: “' + escapeHtml(gradeLabel) + '” — தேடல் முடிவுகள்')
-          : ('“' + escapeHtml(query) + '” — தேடல் முடிவுகள்');
-        var metaBits = [results.length + ' முடிவுகள்', files.length + ' நூல்(கள்) தேடப்பட்டன'];
-        if (!queryEmpty) metaBits.push('முறை: ' + escapeHtml(modeLabel));
-        if (gradeFilters.length) metaBits.push('ஹதீஸ் தரம்: ' + escapeHtml(gradeLabel));
+        var titleText = '“' + escapeHtml(query) + '” — தேடல் முடிவுகள்';
+        var metaBits = [results.length + ' முடிவுகள்', files.length + ' நூல்(கள்) தேடப்பட்டன',
+                        'முறை: ' + escapeHtml(modeLabel)];
 
         var heading = '<p class="crumbs"><a href="#/">முகப்பு</a><span class="sep">›</span>தேடல் முடிவுகள்</p>' +
           '<h1 class="page-title">' + titleText + '</h1>' +
