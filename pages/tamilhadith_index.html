@@ -6,22 +6,24 @@
 <title>தமிழ் ஹதீஸ் தொகுப்பு — தேடல் &amp; வாசிப்பு</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#F3F7FD;
     --surface:#FFFFFF;
     --surface-2:#EAF1FC;
-    --primary:#175CD3;
-    --primary-dark:#0F3F94;
-    --primary-soft:#E4EEFC;
+    --primary:#16678A;
+    --primary-dark:#0F4A66;
+    --primary-soft:#E1EEF4;
+    --secondary:#36A2B0;
     --text:#101828;
     --text-soft:#475467;
     --text-faint:#98A2B3;
     --border:#E1E8F5;
     --border-soft:#EDF2FB;
+    --card-bg:#F6F6F6;
     --green-grade:#1B7A43; --green-grade-bg:#E1F5E9;
-    --blue-grade:#175CD3;  --blue-grade-bg:#E4EEFC;
+    --blue-grade:#16678A;  --blue-grade-bg:#E1EEF4;
     --amber-grade:#B54708; --amber-grade-bg:#FCEEE0;
     --grey-grade:#475467;  --grey-grade-bg:#EEF1F6;
     --radius:12px;
@@ -29,6 +31,7 @@
     --maxw:760px;
     --hf-scale:1;
     --shadow:0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+    --card-shadow:0 2px 6px rgba(16,40,60,.10), 0 1px 3px rgba(16,40,60,.08);
   }
 
   *{box-sizing:border-box;}
@@ -61,11 +64,11 @@
   /* ---------- header ---------- */
   header.site-head{
     position:sticky; top:0; z-index:20;
-    background:var(--surface);
-    border-bottom:1px solid var(--border);
+    background:var(--primary);
+    border-bottom:1px solid var(--primary-dark);
   }
   .head-row{
-    max-width:920px; margin:0 auto;
+    max-width:1300px; margin:0 auto;
     padding:14px 20px;
     display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
   }
@@ -75,54 +78,55 @@
   }
   .brand .mark{
     width:34px; height:34px; border-radius:9px;
-    background:linear-gradient(155deg, var(--primary), var(--primary-dark));
+    background:linear-gradient(155deg, var(--secondary), var(--primary-dark));
     color:#fff; display:flex; align-items:center; justify-content:center;
     font-weight:700; font-size:1.05rem; flex:0 0 auto;
   }
   .brand .titles{display:flex; flex-direction:column; gap:1px;}
-  .brand .title{font-weight:700; font-size:1.1rem; color:var(--text);}
-  .brand .subtitle{font-size:.72rem; color:var(--text-faint);}
+  .brand .title{font-weight:700; font-size:1.1rem; color:#fff;}
+  .brand .subtitle{font-size:.72rem; color:rgba(255,255,255,.75);}
 
   .head-tools{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
 
   .font-ctrl{
     display:flex; align-items:center; gap:2px;
-    background:var(--surface-2); border:1px solid var(--border);
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3);
     border-radius:20px; padding:3px;
   }
   .font-ctrl button{
-    border:none; background:transparent; color:var(--primary-dark);
+    border:none; background:transparent; color:#fff;
     width:30px; height:30px; border-radius:16px; cursor:pointer;
     font-family:'Inter',sans-serif; font-weight:700; font-size:.85rem;
   }
-  .font-ctrl button:hover{background:var(--surface);}
+  .font-ctrl button:hover{background:rgba(255,255,255,.18);}
   .font-ctrl .lbl{
-    font-size:.68rem; color:var(--text-faint); padding:0 6px; white-space:nowrap;
+    font-size:.68rem; color:rgba(255,255,255,.75); padding:0 6px; white-space:nowrap;
   }
 
   /* Arabic on/off switch */
   .ar-switch{
     display:flex; align-items:center; gap:8px; cursor:pointer;
-    background:var(--surface-2); border:1px solid var(--border);
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3);
     border-radius:20px; padding:5px 12px 5px 8px; user-select:none;
   }
   .ar-switch input{position:absolute; opacity:0; width:0; height:0;}
   .ar-switch .track{
-    width:34px; height:20px; border-radius:20px; background:#C5CFDF;
+    width:34px; height:20px; border-radius:20px; background:rgba(255,255,255,.35);
     position:relative; transition:background .15s ease; flex:0 0 auto;
   }
   .ar-switch .thumb{
     position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%;
     background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.25); transition:left .15s ease;
   }
-  .ar-switch input:checked + .track{background:var(--primary);}
+  .ar-switch input:checked + .track{background:var(--secondary);}
   .ar-switch input:checked + .track .thumb{left:16px;}
-  .ar-switch input:focus-visible + .track{outline:2px solid var(--primary); outline-offset:2px;}
-  .ar-switch .lbl{font-size:.78rem; font-weight:600; color:var(--primary-dark); white-space:nowrap;}
+  .ar-switch input:focus-visible + .track{outline:2px solid #fff; outline-offset:2px;}
+  .ar-switch .lbl{font-size:.78rem; font-weight:600; color:#fff; white-space:nowrap;}
 
   /* ---------- layout ---------- */
   main{max-width:var(--maxw); margin:0 auto; padding:26px 20px 80px; transition:max-width .15s ease;}
   main.wide-home{max-width:1040px;}
+  main.wide-hadith{max-width:1300px;}
 
   .crumbs{
     font-size:.82rem; color:var(--text-faint);
@@ -242,6 +246,7 @@
     border-radius:var(--radius-sm);
     padding:16px 34px 14px 14px;
     display:flex; flex-direction:column;
+    box-shadow:var(--card-shadow);
   }
   ul.book-list li:hover{border-color:var(--primary);}
   ul.book-list input[type="checkbox"]{
@@ -290,31 +295,63 @@
     width:70px; text-align:right; font-size:.78rem; color:var(--text-faint);
   }
 
-  /* ---------- hadith cards ---------- */
-  .result-crumb{
-    font-size:.76rem; color:var(--text-faint); margin:20px 0 6px;
+  /* ---------- hadith grid (up to 4 columns on wide screens) ---------- */
+  .hadith-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:16px;
+    align-items:start;
   }
-  .result-crumb:first-of-type{margin-top:0;}
+  @media (min-width:760px){
+    .hadith-grid{grid-template-columns:repeat(2, 1fr);}
+  }
+  @media (min-width:1080px){
+    .hadith-grid{grid-template-columns:repeat(3, 1fr);}
+  }
+  @media (min-width:1300px){
+    .hadith-grid{grid-template-columns:repeat(4, 1fr);}
+  }
+  .hadith-grid-item{display:flex; flex-direction:column; min-width:0;}
+
+  /* ---------- hadith cards: rounded "island" with a visible shadow ---------- */
+  .result-crumb{
+    font-size:.76rem; color:var(--text-faint); margin:0 0 6px;
+  }
 
   article.hadith-card{
-    background:var(--surface);
+    background:var(--card-bg);
     border:1px solid var(--border);
-    border-radius:var(--radius);
-    box-shadow:var(--shadow);
+    border-radius:20px;
+    box-shadow:var(--card-shadow);
     padding:18px 20px;
-    margin-bottom:16px;
     font-size:calc(1rem * var(--hf-scale));
     scroll-margin-top:84px;
     transition:box-shadow .4s ease, border-color .4s ease;
+    flex:1;
   }
   article.hadith-card.hadith-focus{
     border-color:var(--primary);
-    box-shadow:0 0 0 3px var(--primary-soft), var(--shadow);
+    box-shadow:0 0 0 3px var(--primary-soft), var(--card-shadow);
   }
+
+  /* Head row: hadith number top-left (big, bold, secondary color), chapter number
+     top-right — the same corner layout as the app's hadith card. */
+  .hadith-head{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+    margin-bottom:6px;
+  }
+  .hadith-no-big{
+    font-size:1.5em; font-weight:700; color:var(--secondary);
+    text-decoration:none; line-height:1;
+  }
+  a.hadith-no-big:hover{text-decoration:underline;}
+  .hadith-chapter-tag{
+    font-size:.78em; color:var(--primary); font-weight:600;
+    text-align:right; white-space:nowrap; padding-top:.2em;
+  }
+
   .hadith-topic-box{
-    margin:0 0 10px;
-    padding-bottom:8px;
-    border-bottom:1px solid var(--border-soft);
+    margin:0 0 10px; text-align:center;
   }
   .hadith-topic{
     font-size:.95em; font-weight:700; color:var(--primary-dark);
@@ -323,16 +360,28 @@
   .hadith-topic-ar{
     font-size:1.2em; line-height:1.9; color:var(--primary-dark); margin:2px 0 0;
   }
+
+  .hd-divider{border:none; border-top:1px solid rgba(0,0,0,.55); margin:10px 0;}
+  .hd-divider-narrow{
+    border:none; border-top:1px solid rgba(0,0,0,.55);
+    width:80%; max-width:260px; margin:12px auto 10px;
+  }
+
   .hadith-arabic{
     font-size:1.45em; line-height:2.1; color:var(--text);
-    background:var(--surface-2); border-radius:var(--radius-sm);
-    padding:12px 16px; margin:0 0 14px;
+    background:var(--surface); border-radius:var(--radius-sm);
+    padding:12px 16px; margin:0 0 12px;
+  }
+  .hadith-body{
+    /* The sibling Android app uses the system "thin" weight for hadith text and
+       justifies it (inter_word) — approximated on the web with weight 300 +
+       text-align: justify. */
+    font-weight:300;
+    text-align:justify;
+    text-justify:inter-word;
   }
   .hadith-body p{margin:0 0 10px;}
   .hadith-body p:last-child{margin-bottom:0;}
-  .hadith-num{
-    color:var(--primary); font-weight:700; margin-right:2px; white-space:nowrap;
-  }
   a.hadith-num-link{
     text-decoration:none; border-bottom:1px dashed var(--primary);
   }
@@ -340,7 +389,7 @@
   .hadith-text{color:var(--text);}
   .hadith-grade{
     margin:12px 0 0; padding-top:10px; border-top:1px dashed var(--border);
-    font-size:.85em; color:var(--text-soft);
+    font-size:.85em; color:var(--text-soft); font-weight:400; text-align:left;
   }
   .grade-pill{
     display:inline-block; padding:2px 10px; border-radius:20px;
@@ -623,10 +672,9 @@
 
   // ---------------- hadith rendering ----------------
 
-  // numberLabel may be "" (hadith without a number). In search results
-  // numLinkHref makes the number (or a small arrow, when there is no number)
-  // a link back into the book.
-  function renderHadithBody(numberLabel, rawText, highlightTerms, numLinkHref){
+  // Body text only now — the hadith number is its own big element in the
+  // card's head row (see hadithCardHtml), not inlined into the first line.
+  function renderHadithBody(rawText, highlightTerms){
     var marked = highlightRaw(rawText, highlightTerms);
     var esc = escapeHtml(marked);
     var blocks = esc.split(/\n\s*\n+/);
@@ -638,20 +686,9 @@
 
     if (paras.length === 0) paras = [""];
 
-    var numHtml = "";
-    if (numberLabel){
-      var numInner = escapeHtml(numberLabel) + ".";
-      numHtml = numLinkHref
-        ? '<a class="hadith-num hadith-num-link" href="' + escapeHtml(numLinkHref) + '" title="இந்த நூலில் திற">' + numInner + '</a> '
-        : '<span class="hadith-num">' + numInner + '</span> ';
-    } else if (numLinkHref){
-      numHtml = '<a class="hadith-num hadith-num-link" href="' + escapeHtml(numLinkHref) + '" title="இந்த நூலில் திற">↗</a> ';
-    }
-    paras[0] = numHtml + '<span class="hadith-text">' + paras[0] + '</span>';
-    for (var i = 1; i < paras.length; i++){
-      paras[i] = '<span class="hadith-text">' + paras[i] + '</span>';
-    }
-    var html = '<div class="hadith-body">' + paras.map(function(p){ return "<p>" + p + "</p>"; }).join("") + "</div>";
+    var html = '<div class="hadith-body">' + paras.map(function(p){
+      return '<p><span class="hadith-text">' + p + '</span></p>';
+    }).join("") + "</div>";
     return html.split("\u0001").join("<mark>").split("\u0002").join("</mark>");
   }
 
@@ -664,7 +701,9 @@
   // linkInfo: null (plain, used when already browsing inside the book) or
   // {file, chapterKey} (used only in search results) to make the hadith
   // number a link back into the book, landing on and scrolling to that hadith.
-  function hadithCardHtml(entry, key, highlightTerms, linkInfo){
+  // chapterLabel: the chapter number/name to show top-right on the card (only
+  // used in search results, where a result can come from any chapter).
+  function hadithCardHtml(entry, key, highlightTerms, linkInfo, chapterLabel){
     var topic = fieldOf(entry, F.lessonTa).trim();
     var topicAr = fieldOf(entry, F.lessonAr).trim();
     var grade = fieldOf(entry, F.grade).trim();
@@ -675,6 +714,15 @@
       : null;
 
     var html = '<article class="hadith-card" id="hadith-' + escapeHtml(key) + '">';
+
+    // Head row: hadith number (big, bold, left) + chapter tag (right, search only).
+    var numberLabel = hasNumber(hn) ? (escapeHtml(hn) + ".") : "↗";
+    var numHtml = numLinkHref
+      ? '<a class="hadith-no-big hadith-num-link" href="' + escapeHtml(numLinkHref) + '" title="இந்த நூலில் திற">' + numberLabel + '</a>'
+      : '<span class="hadith-no-big">' + numberLabel + '</span>';
+    html += '<div class="hadith-head">' + numHtml +
+      (chapterLabel ? '<span class="hadith-chapter-tag">' + escapeHtml(chapterLabel) + '</span>' : '<span></span>') +
+      '</div>';
 
     if (topic || topicAr){
       html += '<div class="hadith-topic-box' + (topic ? '' : ' only-ar') + '">';
@@ -689,8 +737,9 @@
       html += '</div>';
     }
 
+    html += '<hr class="hd-divider">';
     html += arabicBlockHtml(fieldOf(entry, F.ar));
-    html += renderHadithBody(hasNumber(hn) ? hn : "", fieldOf(entry, F.ta), highlightTerms, numLinkHref);
+    html += renderHadithBody(fieldOf(entry, F.ta), highlightTerms);
 
     if (grade || gradeAr){
       var cls = gradeClass(grade);
@@ -858,7 +907,7 @@
     );
   }
 
-  // ---------------- search panel (shared component) ----------------
+  // ---------------- search panel (shared component; unchanged from before) ----------------
 
   // opts: { scopeType: "home" } or { scopeType: "book", file, bookTitle }
   function searchPanelHtml(opts){
@@ -959,6 +1008,7 @@
       );
     }
     app.classList.add("wide-home");
+    app.classList.remove("wide-hadith");
     return viewHome();
   }
 
@@ -1115,11 +1165,14 @@
         return;
       }
 
+      app.classList.add("wide-hadith");
+
       // Plain (non-linking) cards — we're already inside the book, so the
-      // hadith number should NOT be a link here.
+      // hadith number should NOT be a link here, and every card is in this
+      // same chapter, so there's no need for a per-card chapter tag.
       var entryMap = entryMapOf(data);
       var cards = chapter.keys.map(function(k){
-        return hadithCardHtml(entryMap[k], k, [], null);
+        return '<div class="hadith-grid-item">' + hadithCardHtml(entryMap[k], k, [], null, null) + '</div>';
       }).join("");
 
       setApp(
@@ -1131,7 +1184,7 @@
         (chapter.titleAr ? '<div class="ar page-title-ar" dir="rtl" lang="ar">' + escapeHtml(chapter.titleAr) + '</div>' : '') +
         '<p class="page-meta">' + escapeHtml(bookTitle) + ' · அத்தியாயம் ' + escapeHtml(chapter.num || "—") + ' · ' + chapter.keys.length + ' ஹதீஸ்கள்</p>' +
         searchPanelHtml({scopeType:"book", file:file, bookTitle:bookTitle}) +
-        cards
+        '<div class="hadith-grid">' + cards + '</div>'
       );
 
       wireSearchPanel({scopeType:"book", file:file});
@@ -1177,7 +1230,8 @@
 
       function pushResult(f, bookTitle, hKey, entry, terms){
         results.push({file:f, bookTitle:bookTitle, key:hKey, entry:entry, highlightTerms:terms,
-          chapterKey: chapterKeyOf(entry), chapterTitle: fieldOf(entry, F.chTa)});
+          chapterKey: chapterKeyOf(entry), chapterTitle: fieldOf(entry, F.chTa),
+          chapterNum: fieldOf(entry, F.chNo)});
       }
 
       function step(){
@@ -1238,21 +1292,25 @@
           warn = '<p class="search-warn">இந்த நூல்(கள்) தேடலில் சேர்க்கப்படவில்லை: ' + items + '</p>';
         }
 
+        app.classList.add("wide-hadith");
+
         if (results.length === 0){
           setApp(heading + warn + '<div class="state-box">பொருந்தும் ஹதீஸ் எதுவும் கிடைக்கவில்லை.</div>');
           return;
         }
 
-        var body = results.map(function(r){
+        var cards = results.map(function(r){
+          var crumb = escapeHtml(r.bookTitle) + (r.chapterTitle ? ' · ' + escapeHtml(r.chapterTitle) : '');
+          var chapterTag = r.chapterNum ? (escapeHtml(r.chapterNum) + '. ' + escapeHtml(r.chapterTitle || '')) : '';
           return (
-            '<p class="result-crumb">' + escapeHtml(r.bookTitle) +
-              (r.chapterTitle ? ' · ' + escapeHtml(r.chapterTitle) : '') +
-            '</p>' +
-            hadithCardHtml(r.entry, r.key, r.highlightTerms, {file:r.file, chapterKey:r.chapterKey})
+            '<div class="hadith-grid-item">' +
+              '<p class="result-crumb">' + crumb + '</p>' +
+              hadithCardHtml(r.entry, r.key, r.highlightTerms, {file:r.file, chapterKey:r.chapterKey}, chapterTag) +
+            '</div>'
           );
         }).join("");
 
-        setApp(heading + warn + body);
+        setApp(heading + warn + '<div class="hadith-grid">' + cards + '</div>');
       }
 
       step();
