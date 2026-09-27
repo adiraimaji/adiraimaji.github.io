@@ -126,7 +126,6 @@
   /* ---------- layout ---------- */
   main{max-width:var(--maxw); margin:0 auto; padding:26px 20px 80px; transition:max-width .15s ease;}
   main.wide-home{max-width:1040px;}
-  main.wide-hadith{max-width:1300px;}
 
   .crumbs{
     font-size:.82rem; color:var(--text-faint);
@@ -237,8 +236,17 @@
   ul.book-list{
     list-style:none; margin:0; padding:0;
     display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));
+    grid-template-columns:repeat(4, 1fr);
     gap:12px;
+  }
+  @media (max-width:980px){
+    ul.book-list{grid-template-columns:repeat(3, 1fr);}
+  }
+  @media (max-width:720px){
+    ul.book-list{grid-template-columns:repeat(2, 1fr);}
+  }
+  @media (max-width:460px){
+    ul.book-list{grid-template-columns:1fr;}
   }
   ul.book-list li{
     position:relative;
@@ -295,21 +303,11 @@
     width:70px; text-align:right; font-size:.78rem; color:var(--text-faint);
   }
 
-  /* ---------- hadith grid (up to 4 columns on wide screens) ---------- */
+  /* ---------- hadith list: single column, same width as the rest of the reading page ---------- */
   .hadith-grid{
-    display:grid;
-    grid-template-columns:1fr;
+    display:flex;
+    flex-direction:column;
     gap:16px;
-    align-items:start;
-  }
-  @media (min-width:760px){
-    .hadith-grid{grid-template-columns:repeat(2, 1fr);}
-  }
-  @media (min-width:1080px){
-    .hadith-grid{grid-template-columns:repeat(3, 1fr);}
-  }
-  @media (min-width:1300px){
-    .hadith-grid{grid-template-columns:repeat(4, 1fr);}
   }
   .hadith-grid-item{display:flex; flex-direction:column; min-width:0;}
 
@@ -1008,7 +1006,6 @@
       );
     }
     app.classList.add("wide-home");
-    app.classList.remove("wide-hadith");
     return viewHome();
   }
 
@@ -1165,8 +1162,6 @@
         return;
       }
 
-      app.classList.add("wide-hadith");
-
       // Plain (non-linking) cards — we're already inside the book, so the
       // hadith number should NOT be a link here, and every card is in this
       // same chapter, so there's no need for a per-card chapter tag.
@@ -1291,8 +1286,6 @@
           }).join(", ");
           warn = '<p class="search-warn">இந்த நூல்(கள்) தேடலில் சேர்க்கப்படவில்லை: ' + items + '</p>';
         }
-
-        app.classList.add("wide-hadith");
 
         if (results.length === 0){
           setApp(heading + warn + '<div class="state-box">பொருந்தும் ஹதீஸ் எதுவும் கிடைக்கவில்லை.</div>');
