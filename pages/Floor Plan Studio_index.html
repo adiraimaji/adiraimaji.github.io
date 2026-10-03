@@ -33,6 +33,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;displa
 <label>Canvas <input id="sw" type="text"> × <input id="sh" type="text"></label>
 <div class="g"><button id="zo">−</button><button id="fit">Fit</button><button id="zi">+</button></div>
 <div class="g"><button id="ud">Undo</button><button id="dl">Del wall</button><button id="dg">Del group</button></div>
+<div class="g"><button id="mg" title="Walls shared by touching rooms become ONE single wall that belongs to no room (it can be moved or deleted on its own)">Split intersecting walls</button><button id="sa" title="Turn every closed area into its own independent room with its own closed walls, so each one can be moved separately">Separate all rooms</button></div>
 <button id="pdf" class="pri">Export PDF</button>
 </div>
 <div id="main"><div id="cw"><canvas id="cv"></canvas></div><div id="side"></div></div>
@@ -66,13 +67,27 @@ function planarize(L,real){const T=1e-4,ln=L.map(w=>Math.hypot(w.bx-w.ax,w.by-w.
   if(Math.abs(den)>1e-9*l1*l2){const t=(qx*sy-qy*sx)/den,u=(qx*ry-qy*rx)/den;if(t*l1>=-T&&t*l1<=l1+T&&u*l2>=-T&&u*l2<=l2+T){cuts[i].push(t);cuts[j].push(u)}}
   else if(Math.abs(qx*ry-qy*rx)/l1<T){const pr=(x,y,w,l)=>((x-w.ax)*(w.bx-w.ax)+(y-w.ay)*(w.by-w.ay))/(l*l);cuts[i].push(pr(q.ax,q.ay,p,l1),pr(q.bx,q.by,p,l1));cuts[j].push(pr(p.ax,p.ay,q,l2),pr(p.bx,p.by,q,l2))}}
  const out=[];L.forEach((w,i)=>{const l=ln[i];if(l<T)return;const ts=[0,...[...new Set(cuts[i].filter(t=>t*l>T&&t*l<l-T).map(t=>+t.toFixed(9)))].sort((a,b)=>a-b),1],P=t=>[w.ax+(w.bx-w.ax)*t,w.ay+(w.by-w.ay)*t];
-  for(let k=0;k<ts.length-1;k++){const a=k?P(ts[k]):[w.ax,w.ay],b=k<ts.length-2?P(ts[k+1]):[w.bx,w.by];out.push({...w,id:k?(real?S.nid++:-1):w.id,ax:a[0],ay:a[1],bx:b[0],by:b[1]})}});
+  for(let k=0;k<ts.length-1;k++){const a=k?P(ts[k]):[w.ax,w.ay],b=k<ts.length-2?P(ts[k+1]):[w.bx,w.by];out.push({...w,id:k?(real?S.nid++:-1):w.id,ax:a[0],ay:a[1],bx:b[0],by:b[1],sh:w.sh?clip(w,ts[k],ts[k+1]):undefined})}});
  return out}
 function dedupe(L,byG){const m=new Map(),out=[];for(const w of L){const ka=key(w.ax,w.ay),kb=key(w.bx,w.by);if(ka===kb)continue;const k=(ka<kb?ka+'|'+kb:kb+'|'+ka)+(byG?'#'+w.g:''),e=m.get(k);
  if(!e){m.set(k,w);out.push(w)}else{const same=key(e.ax,e.ay)===ka;e.fl=Math.max(e.fl,same?w.fl:w.fr);e.fr=Math.max(e.fr,same?w.fr:w.fl)}}return out}
+// walls lying on top of each other become ONE standalone wall that remembers which rooms it was cut from
+function fuse(L){const m=new Map(),out=[],ent=w=>{const g=S.groups[w.g]||{};return{g:w.g,ax:w.ax,ay:w.ay,bx:w.bx,by:w.by,fl:w.fl,fr:w.fr,dx:g.dx||0,dy:g.dy||0}};
+ for(const w of L){const ka=key(w.ax,w.ay),kb=key(w.bx,w.by);if(ka===kb)continue;const k=ka<kb?ka+'|'+kb:kb+'|'+ka,e=m.get(k);
+  if(!e){m.set(k,w);out.push(w);continue}
+  const same=key(e.ax,e.ay)===ka,ofl=same?w.fl:w.fr,ofr=same?w.fr:w.fl;
+  if(e.g===w.g&&!e.sh&&!w.sh){e.fl=Math.max(e.fl,ofl);e.fr=Math.max(e.fr,ofr);continue}
+  const ents=(e.sh||[ent(e)]).concat(w.sh||[ent(w)]);
+  if(!e.sh){const gs=S.gid++;S.groups[gs]={kind:'wall',comp:false,sep:false,shared:true};e.g=gs}
+  e.sh=ents;e.fl=Math.max(e.fl,ofl);e.fr=Math.max(e.fr,ofr);S.groups[e.g].comp=ents.some(c=>S.groups[c.g]&&S.groups[c.g].comp)}
+ return out}
+function restore(pred){const add=[];S.walls=S.walls.filter(e=>{if(!e.sh)return true;const keep=[];
+  e.sh.forEach(c=>{const gm=S.groups[c.g];if(!gm)return;if(pred(c)){const tx=(gm.dx||0)-(c.dx||0),ty=(gm.dy||0)-(c.dy||0);add.push({id:S.nid++,g:c.g,ax:c.ax+tx,ay:c.ay+ty,bx:c.bx+tx,by:c.by+ty,fl:c.fl,fr:c.fr})}else keep.push(c)});
+  e.sh=keep;return keep.length>0});S.walls.push(...add);return add.length>0}
+const clip=(w,t0,t1)=>w.sh.map(c=>{const same=(c.bx-c.ax)*(w.bx-w.ax)+(c.by-c.ay)*(w.by-w.ay)>=0,s0=same?t0:1-t1,s1=same?t1:1-t0,dx=c.bx-c.ax,dy=c.by-c.ay;return{...c,ax:c.ax+dx*s0,ay:c.ay+dy*s0,bx:c.ax+dx*s1,by:c.ay+dy*s1}});
 const rev=w=>({...w,ax:w.bx,ay:w.by,bx:w.ax,by:w.ay,fl:w.fr,fr:w.fl});
 function heal(L){for(let ch=true;ch;){ch=false;const m={};L.forEach(w=>{(m[key(w.ax,w.ay)]=m[key(w.ax,w.ay)]||[]).push(w);(m[key(w.bx,w.by)]=m[key(w.bx,w.by)]||[]).push(w)});
- for(const k in m){const a=m[k];if(a.length!==2||a[0]===a[1]||a[0].g!==a[1].g)continue;const[p,q]=a,P=key(p.bx,p.by)===k?p:rev(p),Q=key(q.ax,q.ay)===k?q:rev(q),d1=[P.bx-P.ax,P.by-P.ay],d2=[Q.bx-Q.ax,Q.by-Q.ay];
+ for(const k in m){const a=m[k];if(a.length!==2||a[0]===a[1]||a[0].g!==a[1].g||a[0].sh||a[1].sh)continue;const[p,q]=a,P=key(p.bx,p.by)===k?p:rev(p),Q=key(q.ax,q.ay)===k?q:rev(q),d1=[P.bx-P.ax,P.by-P.ay],d2=[Q.bx-Q.ax,Q.by-Q.ay];
   if(Math.abs(crs(d1,d2))/(Math.hypot(...d1)*Math.hypot(...d2))<1e-6&&d1[0]*d2[0]+d1[1]*d2[1]>0&&Math.abs(P.fl-Q.fl)<1e-6&&Math.abs(P.fr-Q.fr)<1e-6){L=L.filter(w=>w!==p&&w!==q);L.push({...P,bx:Q.bx,by:Q.by});ch=true;break}}}return L}
 // ---- faces (closed areas) of the wall graph, using each wall's own face thickness
 function faces(G){let E=G.map(kk);
@@ -80,10 +95,10 @@ function faces(G){let E=G.map(kk);
  const H=[],out={},TP=2*Math.PI,md=x=>((x%TP)+TP)%TP;
  E.forEach(w=>{const an=Math.atan2(w.by-w.ay,w.bx-w.ax),h0={w,s:0,f:w.ka,t:w.kb,ang:an,x:w.ax,y:w.ay},h1={w,s:1,f:w.kb,t:w.ka,ang:an+Math.PI,x:w.bx,y:w.by};H.push(h0,h1);(out[h0.f]=out[h0.f]||[]).push(h0);(out[h1.f]=out[h1.f]||[]).push(h1)});
  const nxt=h=>{let b=null,bd=9;for(const e of out[h.t]){let d=md(h.ang+Math.PI-e.ang);if(d<1e-9)d=TP;if(d<bd){bd=d;b=e}}return b},bounded=[],outers=[];
- H.forEach(h0=>{if(h0.v)return;const pts=[],o=[],oo=[],ws=[],ks=new Set();let h=h0,c=0;
-  do{h.v=1;pts.push([h.x,h.y]);o.push(h.s?h.w.fr:h.w.fl);oo.push(h.s?h.w.fl:h.w.fr);ws.push(h.w);ks.add(h.f);h=nxt(h)}while(h&&h!==h0&&++c<5000);
+ H.forEach(h0=>{if(h0.v)return;const pts=[],o=[],oo=[],ws=[],hd=[],ks=new Set();let h=h0,c=0;
+  do{h.v=1;pts.push([h.x,h.y]);o.push(h.s?h.w.fr:h.w.fl);oo.push(h.s?h.w.fl:h.w.fr);ws.push(h.w);hd.push(h.s);ks.add(h.f);h=nxt(h)}while(h&&h!==h0&&++c<5000);
   if(h!==h0)return;const A=area(pts);if(Math.abs(A)<1e-9)return;const poly=offs(pts,o),pa=area(poly);
-  A>0?bounded.push({pts,ws,ks,A,poly,iA:pa>0?pa:0,holes:0,hl:[],oA2:Math.abs(area(offs(pts,oo.map(v=>-v))))}):outers.push({pts,ks,oA:Math.abs(pa),poly})});
+  A>0?bounded.push({pts,ws,hd,ks,A,poly,iA:pa>0?pa:0,holes:0,hl:[],oA2:Math.abs(area(offs(pts,oo.map(v=>-v))))}):outers.push({pts,ks,oA:Math.abs(pa),poly})});
  outers.forEach(C=>{let b=null;bounded.forEach(F=>{if([...C.ks].every(k=>!F.ks.has(k))&&inP(C.pts[0],F.pts)&&(!b||F.A<b.A))b=F});if(b){b.holes+=C.oA;b.hl.push(C)}});
  bounded.forEach(F=>{F.net=Math.max(0,F.iA-F.holes);F.outNet=Math.max(0,F.oA2-F.holes)});return{bounded,outers}}
 // ---- helpers for groups / faces
@@ -122,10 +137,10 @@ function moveSnap(pts,ex,d){let best=null,bd=1e9;
 function hitW(p){const tol=6/V.s;for(let i=S.walls.length-1;i>=0;i--){const w=S.walls[i],dx=w.bx-w.ax,dy=w.by-w.ay,l=Math.hypot(dx,dy);if(l<1e-9)continue;const ux=dx/l,uy=dy/l,rx=p[0]-w.ax,ry=p[1]-w.ay,t=rx*ux+ry*uy,d=-rx*uy+ry*ux;
  if(t>=-tol&&t<=l+tol&&d<=w.fl+tol&&d>=-w.fr-tol)return{w,sg:d>=0?1:-1,d,t,l,ux,uy,rx,ry}}return null}
 const selW=()=>S.walls.find(w=>w.id===sel);
-function commit(){const sp=g=>S.groups[g]&&S.groups[g].sep,gs=[...new Set(S.walls.filter(w=>sp(w.g)).map(w=>w.g))];
- let out=heal(dedupe(planarize(S.walls.filter(w=>!sp(w.g)),true),true));
+function commit(){restore(c=>S.groups[c.g]&&S.groups[c.g].sep);const sp=g=>S.groups[g]&&S.groups[g].sep,gs=[...new Set(S.walls.filter(w=>sp(w.g)).map(w=>w.g))];
+ let out=heal(fuse(planarize(S.walls.filter(w=>!sp(w.g)),true)));
  gs.forEach(g=>{out=out.concat(heal(dedupe(planarize(S.walls.filter(w=>w.g===g),true),true)))});S.walls=out;
- for(const g in S.groups)if(!S.walls.some(w=>w.g==g))delete S.groups[g];try{localStorage.setItem('fp2',JSON.stringify(S,(k,v)=>k==='ka'||k==='kb'?undefined:v))}catch(e){}}
+ for(const g in S.groups)if(!S.walls.some(w=>w.g==g||(w.sh&&w.sh.some(c=>c.g==g))))delete S.groups[g];try{localStorage.setItem('fp2',JSON.stringify(S,(k,v)=>k==='ka'||k==='kb'?undefined:v))}catch(e){}}
 const push=()=>{undo.push(JSON.stringify({w:S.walls,g:S.groups,o:S.origin,r:S.rooms}));if(undo.length>80)undo.shift()};
 const R=()=>{if(!raf){raf=1;requestAnimationFrame(()=>{raf=0;render()})}};
 function mkBox(a,b,comp){const g=S.gid++;S.groups[g]={kind:'box',comp,sep:!!S.sepNew};const x0=Math.min(a[0],b[0]),x1=Math.max(a[0],b[0]),y0=Math.min(a[1],b[1]),y1=Math.max(a[1],b[1]),P=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
@@ -225,9 +240,9 @@ function side(){let h='';
 function dlg(title,fs,ok,extra){const o=$('ov'),b=$('db');
  b.innerHTML='<h3>'+title+'</h3>'+fs.map(f=>'<label>'+f.l+(f.t==='sel'?'<select id="f_'+f.id+'">'+f.o.map(([v,t])=>'<option value="'+v+'"'+(v==f.v?' selected':'')+'>'+t+'</option>').join('')+'</select>':f.t==='chk'?'<input type="checkbox" id="f_'+f.id+'"'+(f.v?' checked':'')+'>':f.t==='color'?'<input type="color" id="f_'+f.id+'" value="'+f.v+'" style="width:60px;height:30px;padding:2px">':'<input id="f_'+f.id+'" type="text" value="'+esc(f.v)+'">')+'</label>').join('')+(extra||'')+'<div class="bt"><button id="dc">Cancel</button><button id="dk" class="pri">Apply</button></div>';
  o.style.display='flex';const close=()=>o.style.display='none',val=()=>{const r={};fs.forEach(f=>{const e=$('f_'+f.id);r[f.id]=f.t==='chk'?e.checked:e.value});return r};
- $('dc').onclick=close;$('dk').onclick=()=>{const r=val();close();push();ok(r);commit();R()};
- b.onkeydown=e=>{if(e.key==='Enter')$('dk').click();if(e.key==='Escape')close()};const i=b.querySelector('input');i&&i.select()}
-function boxDlg(g){const b=gbox(g),gm=S.groups[g];if(!b||!gm||gm.kind!=='box')return;
+ $('dc').onclick=()=>{close();commit();R()};$('dk').onclick=()=>{const r=val();close();push();ok(r);commit();R()};
+ b.onkeydown=e=>{if(e.key==='Enter')$('dk').click();if(e.key==='Escape'){close();commit();R()}};const i=b.querySelector('input');i&&i.select()}
+function boxDlg(g){restore(c=>c.g==g);const b=gbox(g),gm=S.groups[g];if(!b||!gm||gm.kind!=='box')return;
  let si=0,so=0;b.ws.forEach(w=>{const io=faceIO(w,b);si+=io.i;so+=io.o});si/=b.ws.length;so/=b.ws.length;
  const t0=si+so,Lc=b.x1-b.x0,Wc=b.y1-b.y0,or=S.origin,m0=gm.comp?'out':'in';
  const vals=(m,t)=>{const ch=Math.abs(t-t0)>1e-6,gi=ch?t/2:si,go=ch?t/2:so,o=m==='in'?gi:m==='out'?-go:0,d=m==='in'?-2*gi:m==='out'?2*go:0;return{gi,go,L:Lc+d,W:Wc+d,X:b.x0+o-or[0],Y:b.y0+o-or[1]}};
@@ -242,11 +257,11 @@ function boxDlg(g){const b=gbox(g),gm=S.groups[g];if(!b||!gm||gm.kind!=='box')re
    if(!gm.comp)S.rooms.forEach(q=>{if(q.x>=b.x0&&q.x<=b.x1&&q.y>=b.y0&&q.y<=b.y1){q.x=nx+(q.x-b.x0)*sx;q.y=ny+(q.y-b.y0)*sy}});
    b.ws.forEach(w=>{w.ax=nx+(w.ax-b.x0)*sx;w.bx=nx+(w.bx-b.x0)*sx;w.ay=ny+(w.ay-b.y0)*sy;w.by=ny+(w.by-b.y0)*sy})}},'');
  const upd=()=>{const t=PL($('f_th').value)||t0,x=vals($('f_mode').value,t);$('f_L').value=FV(x.L);$('f_W').value=FV(x.W);$('f_X').value=FV(x.X);$('f_Y').value=FV(x.Y)};$('f_mode').onchange=upd;$('f_th').onchange=upd}
-function shapeDlg(g){const gm=S.groups[g],ws=S.walls.filter(w=>w.g===g);if(!ws.length)return;const t0=ws.reduce((a,w)=>a+w.fl+w.fr,0)/ws.length;
+function shapeDlg(g){restore(c=>c.g==g);const gm=S.groups[g],ws=S.walls.filter(w=>w.g===g);if(!ws.length)return;const t0=ws.reduce((a,w)=>a+w.fl+w.fr,0)/ws.length;
  dlg('Shape ('+ws.length+' walls)',[{id:'type',l:'Type',t:'sel',v:gm.comp?'c':'r',o:[['r','Room / house'],['c','Compound (land boundary)']]},{id:'th',l:'Wall width (all walls)',t:'text',v:FV(t0)},{id:'sep',l:'Keep walls separate (overlap, no merge)',t:'chk',v:!!gm.sep}],r=>{
   gm.comp=r.type==='c';gm.sep=r.sep;const t=PL(r.th);if(t>0&&Math.abs(t-t0)>1e-6)ws.forEach(w=>{w.fl=w.fr=t/2})})}
 function setT(p,sg,nt,mode){const c=sg>0?'fl':'fr',o=sg>0?'fr':'fl';if(mode==='this')p[c]=Math.max(.002,nt-p[o]);else if(mode==='other')p[o]=Math.max(.002,nt-p[c]);else{const d=(nt-p.fl-p.fr)/2;p.fl=Math.max(.001,p.fl+d);p.fr=Math.max(.001,p.fr+d)}}
-function wallDlg(h){const w=h.w,gm=S.groups[w.g],b=gm&&gm.kind==='box'?gbox(w.g):null;let inner=null;if(b)inner=(h.sg>0)===(faceIO(w,b).li===1);
+function wallDlg(h){restore(c=>c.g==h.w.g);const w=h.w,gm=S.groups[w.g],b=gm&&gm.kind==='box'?gbox(w.g):null;let inner=null;if(b)inner=(h.sg>0)===(faceIO(w,b).li===1);
  const L0=Math.hypot(w.bx-w.ax,w.by-w.ay);
  dlg('Wall — clicked side: '+(inner==null?(h.sg>0?'A':'B'):inner?'inner':'outer'),[{id:'th',l:'Wall width',t:'text',v:FV(w.fl+w.fr)},{id:'mv',l:'Change width by moving',t:'sel',v:'this',o:[['this','Clicked side only (other stays)'],['other','Opposite side only'],['both','Both sides equally']]},{id:'len',l:'Wall length (centre)',t:'text',v:FV(L0)}].concat(b?[{id:'all',l:'Apply width to all walls of this box',t:'chk',v:false}]:[]),r=>{
   const nt=PL(r.th);if(nt>0)(r.all&&b?b.ws:[w]).forEach(p=>{let sg=h.sg;if(p!==w){const li=faceIO(p,b).li;sg=inner?(li?1:-1):(li?-1:1)}setT(p,sg,nt,r.mv)});
@@ -260,7 +275,7 @@ function finishWall(closed){const p=draft.pts;draft=null;if(closed?p.length<3:p.
 const ortho=p=>{const l=draft.pts[draft.pts.length-1];return Math.abs(p[0]-l[0])>Math.abs(p[1]-l[1])?[p[0],l[1]]:[l[0],p[1]]};
 const faceStep=()=>S.unit==='m'?.005:.0127;
 const mvW=()=>S.walls.filter(x=>MS.has(x.g)),labHit=m=>INFO.rooms.find(F=>F.lab&&Math.abs(m[0]-F.lab[0])<60&&Math.abs(m[1]-F.lab[1])<18);
-const startMove=(ws,w,tog)=>{drag={t:'move',ws,st:w,o:ws.map(x=>[x.ax,x.ay,x.bx,x.by]),mv:0,tog}};
+const startMove=(f,w,tog)=>{const ws=f();drag={t:'move',ws,st:w,o:ws.map(x=>[x.ax,x.ay,x.bx,x.by]),mv:0,tog}};
 cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);
  const m=[e.offsetX,e.offsetY],w=s2w(m),now=Date.now(),dbl=now-LT<350&&Math.hypot(m[0]-LP[0],m[1]-LP[1])<10;LT=dbl?0:now;LP=m;M=m;
  if(e.button===1||e.button===2||space){drag={t:'pan',m};return}
@@ -269,18 +284,18 @@ cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);
   const add=e.ctrlKey||e.metaKey||tool==='multi',sw_=selW(),lh=labHit(m);
   if(dbl&&lh){drag=null;roomDlg(lh);R();return}
   if(!dbl&&!add&&!lh&&sw_&&MS.size<2){const b=gbox(sw_.g);
-   for(const x of b.ws)for(const q of[[x.ax,x.ay],[x.bx,x.by]]){const k=key(...q);if(Math.hypot(w[0]-q[0],w[1]-q[1])<10/V.s){drag={t:'node',k,ws:b.ws.filter(y=>y.g===sw_.g),mv:0};R();return}}
+   for(const x of b.ws)for(const q of[[x.ax,x.ay],[x.bx,x.by]]){const k=key(...q);if(Math.hypot(w[0]-q[0],w[1]-q[1])<10/V.s){const um=restore(c=>c.g==sw_.g);drag={t:'node',k,ws:S.walls.filter(y=>y.g===sw_.g),mv:0,unm:um};R();return}}
    const h2=hitW(w);if(h2&&h2.w===sw_&&(sw_.fl+sw_.fr)*V.s>14&&h2.t>=0&&h2.t<=h2.l){const df=Math.abs(h2.d-sw_.fl),dr=Math.abs(h2.d+sw_.fr);if(Math.min(df,dr)<6/V.s){drag={t:'face',w:sw_,sg:df<dr?1:-1,mv:0};R();return}}}
   const hh=lh?null:hitW(w);
   if(dbl){if(hh){sel=hh.w.id;wallDlg(hh)}else{let best=null;for(const g in S.groups){const F=faces(S.walls.filter(x=>x.g==g).map(x=>({...x}))).bounded.filter(F=>inP(w,F.pts)).sort((a,b)=>a.A-b.A)[0];if(F&&(!best||F.A<best.a))best={g:+g,a:F.A}}if(best)(S.groups[best.g].kind==='box'?boxDlg:shapeDlg)(best.g)}drag=null;R();return}
   if(lh){const gs=[...new Set(lh.ws.map(x=>x.g))];sel=null;
    if(add){const all=gs.every(g=>MS.has(g));gs.forEach(g=>all?MS.delete(g):MS.add(g));drag=null}
-   else{if(!gs.every(g=>MS.has(g)))MS=new Set(gs);startMove(mvW(),w,null)}}
+   else{if(!gs.every(g=>MS.has(g)))MS=new Set(gs);startMove(mvW,w,null)}}
   else if(hh){const g=hh.w.g;sel=hh.w.id;
-   if(e.shiftKey&&tool==='select')startMove([hh.w],w,null);
+   if(e.shiftKey&&tool==='select')startMove(()=>[hh.w],w,null);
    else if(add&&tool==='select'){MS.has(g)?MS.delete(g):MS.add(g);if(!MS.has(g))sel=null;drag=null}
-   else if(tool==='multi'){const was=MS.has(g);MS.add(g);startMove(mvW(),w,was?g:null)}
-   else{if(!MS.has(g)||MS.size<2)MS=new Set([g]);startMove(mvW(),w,null)}}
+   else if(tool==='multi'){const was=MS.has(g);MS.add(g);startMove(mvW,w,was?g:null)}
+   else{if(!MS.has(g)||MS.size<2)MS=new Set([g]);startMove(mvW,w,null)}}
   else if(tool==='multi'||e.shiftKey)drag={t:'marq',a:w,b:w,add:tool==='multi'||e.ctrlKey||e.metaKey};
   else{sel=null;MS=new Set();drag={t:'pan',m}}}
  else if(tool==='wall'){
@@ -295,14 +310,15 @@ cv.addEventListener('pointermove',e=>{const m=[e.offsetX,e.offsetY],w=s2w(m);M=m
   if(drag.t==='pan'){V.ox+=m[0]-drag.m[0];V.oy+=m[1]-drag.m[1];drag.m=m}
   else if(drag.t==='marq')drag.b=w;
   else if(drag.t==='node'){if(!drag.mv){push();drag.mv=1}const ex=x=>drag.ws.includes(x),sp=snapPt(w,ex)[0];drag.ws.forEach(x=>{if(key(x.ax,x.ay)===drag.k){x.ax=sp[0];x.ay=sp[1]}else if(key(x.bx,x.by)===drag.k){x.bx=sp[0];x.by=sp[1]}});drag.k=key(...sp);GP=gaps(wbox(drag.ws),ex)}
-  else if(drag.t==='move'){const d=[w[0]-drag.st[0],w[1]-drag.st[1]];if(!drag.mv){if(Math.hypot(...d)*V.s<3)return;push();drag.mv=1;const mg=new Set([...new Set(drag.ws.map(x=>x.g))].filter(g=>S.walls.filter(x=>x.g===g).every(x=>drag.ws.includes(x))));drag.ro=S.rooms.filter(r=>INFO.rooms.some(F=>F.meta===r&&F.ws.every(x=>mg.has(x.g)))).map(r=>[r,r.x,r.y])}
+  else if(drag.t==='move'){const d=[w[0]-drag.st[0],w[1]-drag.st[1]];if(!drag.mv){if(Math.hypot(...d)*V.s<3)return;push();drag.mv=1;const mg=new Set([...new Set(drag.ws.map(x=>x.g))].filter(g=>S.walls.filter(x=>x.g===g).every(x=>drag.ws.includes(x))));drag.gd=[...mg].map(g=>S.groups[g]).filter(Boolean).map(gm=>[gm,gm.dx||0,gm.dy||0]);drag.ro=S.rooms.filter(r=>INFO.rooms.some(F=>F.meta===r&&F.ws.every(x=>mg.has(x.g)||(x.sh&&x.sh.some(c=>mg.has(c.g)))))).map(r=>[r,r.x,r.y])}
    const ex=x=>drag.ws.includes(x),pts=[];drag.o.forEach(o=>pts.push([o[0],o[1]],[o[2],o[3]]));const sd=moveSnap(pts,ex,d);
-   drag.ws.forEach((x,i)=>{const o=drag.o[i];x.ax=o[0]+sd[0];x.ay=o[1]+sd[1];x.bx=o[2]+sd[0];x.by=o[3]+sd[1]});drag.ro.forEach(([r,x,y])=>{r.x=x+sd[0];r.y=y+sd[1]});GP=gaps(wbox(drag.ws),ex);drag.msg='moved '+LB(sd[0])+', '+LB(sd[1])}
+   drag.ws.forEach((x,i)=>{const o=drag.o[i];x.ax=o[0]+sd[0];x.ay=o[1]+sd[1];x.bx=o[2]+sd[0];x.by=o[3]+sd[1]});drag.ro.forEach(([r,x,y])=>{r.x=x+sd[0];r.y=y+sd[1]});drag.gd.forEach(([gm,x,y])=>{gm.dx=x+sd[0];gm.dy=y+sd[1]});GP=gaps(wbox(drag.ws),ex);drag.msg='moved '+LB(sd[0])+', '+LB(sd[1])}
   else if(drag.t==='face'){if(!drag.mv){push();drag.mv=1}const x=drag.w,l=Math.hypot(x.bx-x.ax,x.by-x.ay)||1,d=-(w[0]-x.ax)*(x.by-x.ay)/l+(w[1]-x.ay)*(x.bx-x.ax)/l,q=faceStep(),sn=$('sn').checked;
    if(drag.sg>0)x.fl=Math.max(.002,sn?Math.round(d/q)*q:d);else x.fr=Math.max(.002,sn?Math.round(-d/q)*q:-d);drag.msg='wall width '+LB(x.fl+x.fr)}
   else if(drag.t==='box'){drag.b=hover[0];const a=drag.a,b=drag.b,t=S.tw/2;GP=gaps([Math.min(a[0],b[0])-t,Math.min(a[1],b[1])-t,Math.max(a[0],b[0])+t,Math.max(a[1],b[1])+t],()=>false)}}
  R()});
 cv.addEventListener('pointerup',()=>{
+ if(drag&&drag.unm&&!drag.mv)commit();
  if(drag&&drag.t==='box'&&drag.b&&Math.abs(drag.b[0]-drag.a[0])>.05&&Math.abs(drag.b[1]-drag.a[1])>.05){push();mkBox(drag.a,drag.b,drag.c);MS=new Set([S.walls[S.walls.length-1].g]);commit();setTool('select')}
  else if(drag&&drag.t==='marq'){const a=drag.a,b=drag.b,x0=Math.min(a[0],b[0]),x1=Math.max(a[0],b[0]),y0=Math.min(a[1],b[1]),y1=Math.max(a[1],b[1]);
   if(!drag.add)MS=new Set();S.walls.forEach(x=>{const q=qbox(x);if(q[0]<=x1&&q[2]>=x0&&q[1]<=y1&&q[3]>=y0)MS.add(x.g)});sel=null}
@@ -326,6 +342,19 @@ document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>setTool(b.dataset
 $('un').onchange=e=>{S.unit=e.target.value;sync();commit();R()};
 $('tw').onchange=e=>{const v=PL(e.target.value);if(v>0)S.tw=v;sync();commit()};
 $('sw').onchange=$('sh').onchange=()=>{const a=PL($('sw').value),b=PL($('sh').value);if(a>0&&b>0)S.sheet=[a,b];sync();commit();R()};
+function setAllSep(v){push();for(const g in S.groups)S.groups[g].sep=v;commit();R()}
+$('mg').onclick=()=>setAllSep(false);
+// every closed area (room) of the drawing becomes its own independent room with its own closed ring of walls
+function separateRooms(){push();
+ const G=dedupe(planarize(S.walls.map(w=>({...w})),false)),F=faces(G).bounded,used=new Set(),nw=[],pk=w=>{const a=key(w.ax,w.ay),b=key(w.bx,w.by);return a<b?a+'|'+b:b+'|'+a};
+ F.forEach(f=>{const g=S.gid++,list=[];let cl=0,al=0;
+  f.ws.forEach((w,i)=>{used.add(pk(w));const p=f.pts[i],q=f.pts[(i+1)%f.pts.length],r=f.hd[i],l=Math.hypot(q[0]-p[0],q[1]-p[1]);al+=l;if(S.groups[w.g]&&S.groups[w.g].comp)cl+=l;
+   list.push({id:S.nid++,g,ax:p[0],ay:p[1],bx:q[0],by:q[1],fl:r?w.fr:w.fl,fr:r?w.fl:w.fr})});
+  const L=heal(list),rect=L.length===4&&L.every(w=>Math.abs(w.ax-w.bx)<1e-6||Math.abs(w.ay-w.by)<1e-6);
+  S.groups[g]={kind:rect?'box':'wall',comp:cl>al/2,sep:true};nw.push(...L)});
+ G.forEach(w=>{if(!used.has(pk(w))){const c={...w,id:S.nid++};delete c.sh;nw.push(c)}});
+ S.walls=nw;commit();MS=new Set();sel=null;R()}
+$('sa').onclick=separateRooms;
 $('sn').onchange=$('dm').onchange=R;$('sp').onchange=e=>{S.sepNew=e.target.checked;commit()};
 $('zi').onclick=()=>zoom(1.25,cv.clientWidth/2,cv.clientHeight/2);$('zo').onclick=()=>zoom(.8,cv.clientWidth/2,cv.clientHeight/2);
 $('fit').onclick=fit;$('ud').onclick=doUndo;$('dl').onclick=()=>delW(false);$('dg').onclick=()=>delW(true);
