@@ -83,7 +83,7 @@ function faces(G){let E=G.map(kk);
  H.forEach(h0=>{if(h0.v)return;const pts=[],o=[],oo=[],ws=[],ks=new Set();let h=h0,c=0;
   do{h.v=1;pts.push([h.x,h.y]);o.push(h.s?h.w.fr:h.w.fl);oo.push(h.s?h.w.fl:h.w.fr);ws.push(h.w);ks.add(h.f);h=nxt(h)}while(h&&h!==h0&&++c<5000);
   if(h!==h0)return;const A=area(pts);if(Math.abs(A)<1e-9)return;const poly=offs(pts,o),pa=area(poly);
-  A>0?bounded.push({pts,ws,ks,A,poly,iA:pa>0?pa:0,holes:0,hl:[],oA2:Math.abs(area(offs(pts,oo.map(v=>-v))))}):outers.push({pts,ks,oA:Math.abs(pa)})});
+  A>0?bounded.push({pts,ws,ks,A,poly,iA:pa>0?pa:0,holes:0,hl:[],oA2:Math.abs(area(offs(pts,oo.map(v=>-v))))}):outers.push({pts,ks,oA:Math.abs(pa),poly})});
  outers.forEach(C=>{let b=null;bounded.forEach(F=>{if([...C.ks].every(k=>!F.ks.has(k))&&inP(C.pts[0],F.pts)&&(!b||F.A<b.A))b=F});if(b){b.holes+=C.oA;b.hl.push(C)}});
  bounded.forEach(F=>{F.net=Math.max(0,F.iA-F.holes);F.outNet=Math.max(0,F.oA2-F.holes)});return{bounded,outers}}
 // ---- helpers for groups / faces
@@ -91,6 +91,16 @@ function gbox(g){const ws=S.walls.filter(w=>w.g===g);if(!ws.length)return null;l
 function faceIO(w,b){const dx=w.bx-w.ax,dy=w.by-w.ay,dot=((b.x0+b.x1)/2-(w.ax+w.bx)/2)*-dy+((b.y0+b.y1)/2-(w.ay+w.by)/2)*dx;return dot>0?{i:w.fl,o:w.fr,li:1}:{i:w.fr,o:w.fl,li:0}}
 function qd(w,ea,eb){const dx=w.bx-w.ax,dy=w.by-w.ay,l=Math.hypot(dx,dy)||1e-9,ux=dx/l,uy=dy/l,nx=-uy,ny=ux;
  return[[w.ax-ux*ea+nx*w.fl,w.ay-uy*ea+ny*w.fl],[w.bx+ux*eb+nx*w.fl,w.by+uy*eb+ny*w.fl],[w.bx+ux*eb-nx*w.fr,w.by+uy*eb-ny*w.fr],[w.ax-ux*ea-nx*w.fr,w.ay-uy*ea-ny*w.fr]]}
+function hitRQ(r,q){const qx=q.map(p=>p[0]),qy=q.map(p=>p[1]);if(Math.max(...qx)<r[0]||Math.min(...qx)>r[2]||Math.max(...qy)<r[1]||Math.min(...qy)>r[3])return false;
+ const rc=[[r[0],r[1]],[r[2],r[1]],[r[2],r[3]],[r[0],r[3]]];
+ for(let i=0;i<2;i++){const a=q[i],b=q[i+1],nx=-(b[1]-a[1]),ny=b[0]-a[0],pr=q.map(p=>p[0]*nx+p[1]*ny),rp=rc.map(p=>p[0]*nx+p[1]*ny);if(Math.max(...rp)<Math.min(...pr)||Math.min(...rp)>Math.max(...pr))return false}return true}
+function labelSpot(F,tw,th,QD){const xs=F.poly.map(p=>p[0]),ys=F.poly.map(p=>p[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),mx=(x0+x1)/2,my=(y0+y1)/2,N=22,Cn=[],ok=q=>inP(q,F.poly)&&!F.hl.some(c=>inP(q,c.poly));
+ for(let i=0;i<N;i++)for(let j=0;j<N;j++){const p=[x0+(x1-x0)*(i+.5)/N,y0+(y1-y0)*(j+.5)/N];if(ok(p))Cn.push([p,(p[0]-mx)**2+(p[1]-my)**2])}
+ Cn.sort((a,b)=>a[1]-b[1]);const pad=3/V.s;
+ for(const sc of[1,.85,.7,.55]){const hw=tw*sc/2/V.s+pad,hh=th*sc/2/V.s+pad;
+  for(const[p]of Cn){const r=[p[0]-hw,p[1]-hh,p[0]+hw,p[1]+hh];
+   if([[r[0],r[1]],[r[2],r[1]],[r[2],r[3]],[r[0],r[3]],[p[0],r[1]],[p[0],r[3]],[r[0],p[1]],[r[2],p[1]]].every(ok)&&!F.poly.some(v=>v[0]>r[0]&&v[0]<r[2]&&v[1]>r[1]&&v[1]<r[3])&&!QD.some(q=>hitRQ(r,q)))return{p,sc}}}
+ return{p:Cn.length?Cn[0][0]:F.ip,sc:.55}}
 const qbox=w=>{const q=qd(w,0,0),xs=q.map(p=>p[0]),ys=q.map(p=>p[1]);return[Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)]};
 function wbox(ws){const b=ws.map(qbox);return[Math.min(...b.map(x=>x[0])),Math.min(...b.map(x=>x[1])),Math.max(...b.map(x=>x[2])),Math.max(...b.map(x=>x[3]))]}
 function gaps(bb,ex){const O=S.walls.filter(w=>!ex(w)).map(qbox),r=[],ov=(a,b,c,d)=>Math.min(b,d)-Math.max(a,c)>1e-6;let best;
@@ -170,8 +180,11 @@ function render(EX){
  cx.font='11px system-ui';cx.textBaseline='middle';
  if($('dm').checked)S.walls.forEach(x=>{const l=Math.hypot(x.bx-x.ax,x.by-x.ay);if(l*V.s<60)return;const m=w2s([(x.ax+x.bx)/2,(x.ay+x.by)/2]);halo(LB(l),m[0],m[1],C)});
  cx.font='bold 12px system-ui';
- rooms.forEach(r=>{if(!r.ip)return;const xs=r.poly.map(p=>p[0]),ys=r.poly.map(p=>p[1]);if((Math.max(...xs)-Math.min(...xs))*V.s<80||(Math.max(...ys)-Math.min(...ys))*V.s<40)return;
-  const p=w2s(r.ip);r.lab=p;halo(r.name,p[0],p[1]-8,C,'center');cx.font='12px system-ui';halo(ar(r.disp)+(r.basis==='out'?' (incl. walls)':''),p[0],p[1]+8,C,'center');cx.font='bold 12px system-ui'});
+ const QD=S.walls.map(x=>qd(x,0,0));
+ rooms.forEach(r=>{if(!r.ip)return;const xs=r.poly.map(p=>p[0]),ys=r.poly.map(p=>p[1]);if((Math.max(...xs)-Math.min(...xs))*V.s<28||(Math.max(...ys)-Math.min(...ys))*V.s<18)return;
+  const t2=ar(r.disp)+(r.basis==='out'?' (incl. walls)':'');cx.font='bold 12px system-ui';const wn=cx.measureText(r.name).width;cx.font='12px system-ui';const tw=Math.max(wn,cx.measureText(t2).width)+10;
+  const L=labelSpot(r,tw,34,QD),p=w2s(L.p),sc=L.sc;r.lab=p;
+  cx.font='bold '+12*sc+'px system-ui';halo(r.name,p[0],p[1]-8*sc,C,'center');cx.font=12*sc+'px system-ui';halo(t2,p[0],p[1]+8*sc,C,'center');cx.font='bold 12px system-ui'});
  lands.forEach(l=>{if(!l.p)return;const p=w2s(l.p);cx.fillStyle=C('--cp');halo(l.n+' · land '+ar(l.land),p[0],p[1]-12,C,'left')});
  if(sw_&&MS.size<2){const b2=gbox(sw_.g),seen={};cx.fillStyle='#fff';cx.strokeStyle=C('--sel');cx.lineWidth=2;
   b2.ws.forEach(x=>{for(const q of[[x.ax,x.ay],[x.bx,x.by]]){const k=key(...q);if(seen[k])continue;seen[k]=1;const s=w2s(q);cx.fillRect(s[0]-4,s[1]-4,8,8);cx.strokeRect(s[0]-4,s[1]-4,8,8)}});
