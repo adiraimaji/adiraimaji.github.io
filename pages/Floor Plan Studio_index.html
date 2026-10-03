@@ -24,6 +24,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;displa
 #db h3{margin:0 0 10px;font-size:15px}#db label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
 #db label input[type=text],#db label select{width:180px}.bt{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
 #anc{display:grid;grid-template-columns:repeat(3,24px);gap:3px}#anc button{width:24px;height:24px;padding:0;font-size:10px}#mvp label{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;color:var(--mu)}#mvp input[type=text]{width:96px}#mvp select{width:112px}
+#ip{display:none;position:absolute;left:50%;transform:translateX(-50%);bottom:12px;max-width:96%;flex-wrap:wrap;gap:6px 10px;align-items:center;background:var(--pn);border:1px solid var(--bd);border-radius:10px;padding:8px 12px;box-shadow:0 2px 12px rgba(0,0,0,.2);z-index:5}#ip label{display:flex;align-items:center;gap:5px;color:var(--mu)}#ip input{width:92px}#ip b{color:var(--tx)}
 @media(max-width:720px){#main{flex-direction:column}#side{width:auto;height:30%;border-left:0;border-top:1px solid var(--bd)}}
 </style></head><body>
 <div id="tb">
@@ -42,13 +43,13 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;displa
 <div class="g"><button id="lk" title="Lock the selected rooms in place so they cannot be moved or deleted by accident (press again to unlock)">Lock / Unlock</button></div>
 <button id="pdf" class="pri">Export PDF</button>
 </div>
-<div id="main"><div id="cw"><canvas id="cv"></canvas></div><div id="side"><div id="mvp"></div><div id="areas"></div></div></div>
+<div id="main"><div id="cw"><canvas id="cv"></canvas><div id="ip"></div></div><div id="side"><div id="mvp"></div><div id="areas"></div></div></div>
 <div id="st"></div><div id="ov"><div id="db"></div></div>
 <script>
 const U={ftin:{f:.3048,l:'ft',a:'sq ft'},ft:{f:.3048,l:'ft',a:'sq ft'},m:{f:1,l:'m',a:'sq m'}},RL=22;
 let S={unit:'ftin',sheet:[30.48,18.288],walls:[],groups:{},rooms:[],nid:1,gid:1,tw:.2286,bm:'in',lm:'out',wl:'ctr',origin:[0,0]};
 try{const j=JSON.parse(localStorage.getItem('fp2'));if(j&&j.walls)S=Object.assign(S,j)}catch(e){}
-let JP=[],JC=[],EQ=null,LASTO=null;
+let JP=[],JC=[],EQ=null,LASTO=null,BD=null;
 // face the new wall starts from when drawn in direction n*s (it starts on the opposite face and runs through the host)
 const cellFace=(c,s)=>{const dx=c.n[0]*s,dy=c.n[1]*s;return Math.abs(dy)>=Math.abs(dx)?(dy>0?'top':'bottom'):(dx>0?'left':'right')};
 const cellStart=(c,s)=>{const o=s>0?-c.fr:c.fl;return[c.p[0]+c.n[0]*o,c.p[1]+c.n[1]*o]};
@@ -171,7 +172,8 @@ function ipt(F){const xs=F.poly.map(p=>p[0]),ys=F.poly.map(p=>p[1]),x0=Math.min(
  for(let i=0;i<N;i++)for(let j=0;j<N;j++){const p=[x0+(x1-x0)*(i+.5)/N,y0+(y1-y0)*(j+.5)/N];if(!inP(p,F.poly)||F.hl.some(c=>inP(p,c.pts)))continue;const d=(p[0]-cx_)**2+(p[1]-cy_)**2;if(d<bd){bd=d;best=p}}return best||[cx_,cy_]}
 function livePts(){const P=[],seen={},add=(p,c)=>{const k=key(p[0],p[1]);if(!seen[k]){seen[k]=1;P.push([p,c])}};
  if(draft&&!drag){add(draft.pts[draft.pts.length-1],null);if(hover)add(hover[0],null)}
- if(!drag)return P;
+ if(!drag){if(BD&&BD.b){const a=BD.a,b=BD.b,c=[(a[0]+b[0])/2,(a[1]+b[1])/2];[[a[0],a[1]],[b[0],a[1]],[b[0],b[1]],[a[0],b[1]]].forEach(p=>add(p,c))}
+  else if(!draft&&hover&&(tool==='wall'||tool==='box'||tool==='comp'))add(hover[0],null);return P}
  if(drag.t==='box'&&drag.b){const a=drag.a,b=drag.b,c=[(a[0]+b[0])/2,(a[1]+b[1])/2];[[a[0],a[1]],[b[0],a[1]],[b[0],b[1]],[a[0],b[1]]].forEach(p=>add(p,c))}
  else if(drag.t==='node'&&drag.mv){const w0=drag.ws.find(x=>key(x.ax,x.ay)===drag.k||key(x.bx,x.by)===drag.k);if(w0)add(key(w0.ax,w0.ay)===drag.k?[w0.ax,w0.ay]:[w0.bx,w0.by],null)}
  else if(drag.t==='move'&&drag.mv)[...new Set(drag.ws.map(x=>x.g))].forEach(g=>{const gm=S.groups[g],b=gm&&gm.kind==='box'?gbox(g):null;
@@ -261,14 +263,15 @@ function render(EX){
    else if(draft.cell&&draft.pts.length===1)halo('joint: starts at '+cellFace(draft.cell,draft.cs||1)+' face',q[0]+14,q[1]+26,C,'left');
    else{const o=$('wl');halo('line = '+o.options[o.selectedIndex].text.replace(/ \(.*/,''),q[0]+14,q[1]+26,C,'left')}}
   if(draft.pts.length>=3&&M){const q=w2s(draft.pts[0]);if(Math.hypot(M[0]-q[0],M[1]-q[1])<12){cx.beginPath();cx.arc(q[0],q[1],8,0,7);cx.stroke()}}}
- if(drag&&drag.t==='box'&&drag.b){const p=w2s(drag.a),q=w2s(drag.b);cx.globalAlpha=.2;cx.fillRect(p[0],p[1],q[0]-p[0],q[1]-p[1]);cx.globalAlpha=1;cx.setLineDash([6,4]);cx.lineWidth=2;cx.strokeRect(p[0],p[1],q[0]-p[0],q[1]-p[1]);cx.setLineDash([]);
-  cx.font='12px system-ui';halo(LB(Math.abs(drag.b[0]-drag.a[0]))+' × '+LB(Math.abs(drag.b[1]-drag.a[1])),(p[0]+q[0])/2,(p[1]+q[1])/2,C)}
+ const BB=EX?null:BDv();if(BB&&BB.b){const p=w2s(BB.a),q=w2s(BB.b);cx.globalAlpha=.2;cx.fillRect(p[0],p[1],q[0]-p[0],q[1]-p[1]);cx.globalAlpha=1;cx.setLineDash([6,4]);cx.lineWidth=2;cx.strokeRect(p[0],p[1],q[0]-p[0],q[1]-p[1]);cx.setLineDash([]);
+  cx.font='12px system-ui';halo(LB(Math.abs(BB.b[0]-BB.a[0]))+' × '+LB(Math.abs(BB.b[1]-BB.a[1])),(p[0]+q[0])/2,(p[1]+q[1])/2,C)}
  if(drag&&drag.t==='marq'){const p=w2s(drag.a),q=w2s(drag.b);cx.setLineDash([5,3]);cx.lineWidth=1.5;cx.strokeStyle=C('--sel');cx.strokeRect(p[0],p[1],q[0]-p[0],q[1]-p[1]);cx.setLineDash([])}
  cx.lineWidth=1.5;cx.font='bold 11px system-ui';
  GP.forEach(q=>{const p1=w2s([q.x1,q.y1]),p2=w2s([q.x2,q.y2]);cx.beginPath();cx.moveTo(p1[0],p1[1]);cx.lineTo(p2[0],p2[1]);
   for(const p of[p1,p2]){cx.moveTo(p[0]+(p1[1]===p2[1]?0:-5),p[1]+(p1[1]===p2[1]?-5:0));cx.lineTo(p[0]+(p1[1]===p2[1]?0:5),p[1]+(p1[1]===p2[1]?5:0))}cx.stroke();halo(q.t,(p1[0]+p2[0])/2,(p1[1]+p2[1])/2-9,C)});
  livePts().forEach(([p,c])=>{const q=w2s(p),sx=c?(p[0]<c[0]?-1:1):1,sy=c?(p[1]<c[1]?-1:1):-1;cx.fillStyle=C('--sel');cx.beginPath();cx.arc(q[0],q[1],3.5,0,7);cx.fill();cx.font='bold 11px system-ui';cx.textBaseline='middle';halo(LB(p[0]-ox)+', '+LB(p[1]-oy),q[0]+sx*8,q[1]+sy*12,C,sx<0?'right':'left')});
  if(hover&&hover[1]>0){const q=w2s(hover[0]);cx.lineWidth=2;cx.beginPath();cx.arc(q[0],q[1],7,0,7);cx.stroke()}
+ if(!EX)syncPanel();
  if(EX){cx=cx0;return}
  {const o=w2s(S.origin);cx.strokeStyle='#d02a2a';cx.fillStyle='#d02a2a';cx.lineWidth=1.5;cx.beginPath();cx.moveTo(o[0]-9,o[1]);cx.lineTo(o[0]+9,o[1]);cx.moveTo(o[0],o[1]-9);cx.lineTo(o[0],o[1]+9);cx.stroke();cx.beginPath();cx.arc(o[0],o[1],4,0,7);cx.stroke();cx.font='10px system-ui';cx.textAlign='left';cx.fillText('0,0',o[0]+6,o[1]+14)}
  cx.fillStyle=C('--pn');cx.fillRect(0,0,w,RL);cx.fillRect(0,0,RL,h);
@@ -281,7 +284,7 @@ function render(EX){
  cx.fillStyle=C('--ac');cx.textAlign='left';cx.fillText(U[S.unit].l,3,6);
  if(M){cx.strokeStyle=C('--sel');cx.beginPath();cx.moveTo(M[0]+.5,0);cx.lineTo(M[0]+.5,RL);cx.moveTo(0,M[1]+.5);cx.lineTo(RL,M[1]+.5);cx.stroke()}
  side();status();updateMv()}
-const HINT={select:'Double-click an area label to rename it / include walls · double-click inside a room for walls-separate option · Ctrl-click or Multi tool = multi-select · drag wall = move group (Shift = just that wall) · square handles = corners · round handles = each wall face · double-click wall/box to edit',box:'Drag to draw a box',comp:'Drag to draw the compound (land) boundary',wall:'Click points, or type a length + Enter (e.g. 5\') · green dots = join points at the free end of a wall (half a wall-width in from the end): click one, then drag above/below (or left/right) - the new wall has the same thickness, starts on the opposite face and is measured from it · diamonds = joint points on existing walls (both faces): start from one and the new wall copies its thickness and length · Wall line = which face/centre your line is (Tab cycles) · matching lengths snap (= same) · click the first point or type back to it to close a room (uses Draw size) · RIGHT-CLICK / Enter (empty) finishes · Backspace undoes a point · Esc cancels · Shift = force straight',multi:'Click walls/room labels to add or remove them, drag empty space to box-select, drag a selected wall to move all',origin:'Click the point that should become 0,0'};
+const HINT={select:'Double-click an area label to rename it / include walls · double-click inside a room for walls-separate option · Ctrl-click or Multi tool = multi-select · drag wall = move group (Shift = just that wall) · square handles = corners · round handles = each wall face · double-click wall/box to edit',box:'Click or drag the first corner, then click the opposite corner · it is NOT finished until you RIGHT-CLICK (or Enter) · type exact Width / Length in the box below (Tab) · Esc cancels',comp:'Click or drag the first corner, then click the opposite corner of the compound (land) boundary · RIGHT-CLICK (or Enter) finishes · type exact Width / Length in the box below (Tab) · Esc cancels',wall:'Click points, or type a length + Enter (e.g. 5\') · green dots = join points at the free end of a wall (half a wall-width in from the end): click one, then drag above/below (or left/right) - the new wall has the same thickness, starts on the opposite face and is measured from it · diamonds = joint points on existing walls (both faces): start from one and the new wall copies its thickness and length · Wall line = which face/centre your line is (Tab cycles) · matching lengths snap (= same) · click the first point or type back to it to close a room (uses Draw size) · RIGHT-CLICK / Enter (empty) finishes · Backspace undoes a point · Esc cancels · Shift = force straight',multi:'Click walls/room labels to add or remove them, drag empty space to box-select, drag a selected wall to move all',origin:'Click the point that should become 0,0'};
 function status(){const w=M?s2w(M):null;$('st').textContent=(Date.now()<FLU?'⚠ '+FLM+'  |  ':'')+HINT[tool]+'  |  '+(w?'x '+LB(w[0]-S.origin[0])+'  y '+LB(w[1]-S.origin[1])+'  |  ':'')+(drag&&drag.msg?drag.msg+'  |  ':'')+'zoom '+(+(V.s*FM()).toFixed(1))+' px/'+U[S.unit].l}
 function side(){let h='';
  INFO.lands.forEach(l=>h+='<div class="it"><b>'+l.n+'</b><i>land</i><div class="r"><span>Land (outer bound)</span><b>'+ar(l.land)+'</b></div><div class="r"><span>Inside walls (clear)</span><b>'+ar(l.clear)+'</b></div></div>');
@@ -323,7 +326,29 @@ function roomDlg(F){dlg('Room',[{id:'name',l:'Name',t:'text',v:F.name},{id:'basi
   let m=F.meta;if(!m){m={};S.rooms.push(m)}const ip=F.ip||[0,0];m.x=ip[0];m.y=ip[1];m.name=r.name.trim();m.basis=r.basis;m.color=r.reset?'':r.color},
   '<div class="em" style="margin:4px 0 0">Clear (inner): <b>'+ar(F.net)+'</b><br>Including walls (outer): <b>'+ar(F.outNet)+'</b></div>')}
 // ---- interaction
-function setTool(t){tool=t;draft=null;drag=null;hover=null;GP=[];$('wlw').style.display=t==='wall'?'':'none';document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));R()}
+// ---- unfinished box / compound: stays on the canvas until right-click / Enter (Esc cancels)
+const BDv=()=>drag&&drag.t==='box'?drag:BD;
+function boxGaps(d){const a=d.a,b=d.b,t=S.bm==='in'?S.tw:S.bm==='out'?0:S.tw/2;GP=gaps([Math.min(a[0],b[0])-t,Math.min(a[1],b[1])-t,Math.max(a[0],b[0])+t,Math.max(a[1],b[1])+t],()=>false)}
+function finishBox(){const d=BD;if(!d){return}const dx=Math.abs(d.b[0]-d.a[0]),dy=Math.abs(d.b[1]-d.a[1]);
+ if(S.bm==='out'&&(dx<=S.tw||dy<=S.tw)){flash('Too small for this wall width at Outer size - draw bigger or use a thinner wall');return}
+ if(dx>.05&&dy>.05){push();mkBox(d.a,d.b,d.c);MS=new Set([S.walls[S.walls.length-1].g]);BD=null;commit();setTool('select');return}
+ flash('Too small - move the mouse, or type a width and length in the box below')}
+function applyBox(){if(!BD)return;const w=PL($('ipw').value),h=PL($('iph').value);if(!(w>0)||!(h>0)){flash('Type a valid width and length, for example 12\' 6" or 3.5');return}
+ const a=BD.a,sx=BD.b[0]>=a[0]?1:-1,sy=BD.b[1]>=a[1]?1:-1;BD.b=[a[0]+sx*w,a[1]+sy*h];BD.follow=false;$('ipw').dataset.d='';$('iph').dataset.d='';boxGaps(BD);if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();R()}
+function applyWall(){if(!draft)return;const te=$('ipt');if(te&&te.dataset.d==='1'){const t=PL(te.value);if(t>0)draft.tk=t;te.dataset.d=''}
+ const v=$('ipl').value.trim(),len=PL(v);if(!(len>0)){flash('Type a length such as 5\' or 5\' 6" or 1.5');R();return}draft.ty=v;$('ipl').dataset.d='';typedWall();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur()}
+const BOXP='<b id="ipn">Box size</b><label>Width (horizontal) <input id="ipw" type="text"></label><label>Length (vertical) <input id="iph" type="text"></label><button id="ipa" class="pri">Apply</button><button id="ipf">Finish</button><button id="ipc">Cancel</button><span class="em">optional - or right-click / Enter = finish</span>',
+ WALLP='<b>Wall</b><label>Length <input id="ipl" type="text"></label><label>Thickness <input id="ipt" type="text"></label><button id="ipa" class="pri">Add point</button><button id="ipf">Finish</button><button id="ipc">Cancel</button><span class="em">optional - or right-click / Enter = finish</span>';
+function syncPanel(){const ip=$('ip'),bx=BDv();let m=null;
+ if((tool==='box'||tool==='comp')&&bx&&bx.b)m='box';else if(tool==='wall'&&draft)m='wall';
+ if(!m){if(ip.style.display!=='none')ip.style.display='none';ip.dataset.m='';return}
+ if(ip.dataset.m!==m){ip.dataset.m=m;ip.innerHTML=m==='box'?BOXP:WALLP;
+  ip.querySelectorAll('input').forEach(i=>{i.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();m==='box'?applyBox():applyWall()}else if(e.key==='Escape')i.blur()};i.oninput=()=>{i.dataset.d='1'}});
+  $('ipa').onclick=()=>m==='box'?applyBox():applyWall();$('ipf').onclick=()=>m==='box'?finishBox():finishWall(false);$('ipc').onclick=()=>{BD=null;draft=null;drag=null;GP=[];R()}}
+ ip.style.display='flex';const set=(id,v)=>{const el=$(id);if(el&&document.activeElement!==el&&el.dataset.d!=='1')el.value=v};
+ if(m==='box'){$('ipn').textContent=bx.c?'Compound size':'Box size';set('ipw',FV(Math.abs(bx.b[0]-bx.a[0])));set('iph',FV(Math.abs(bx.b[1]-bx.a[1])))}
+ else{const l=draft.pts[draft.pts.length-1],h=hover?hover[0]:l;set('ipl',FV(Math.hypot(h[0]-l[0],h[1]-l[1])));set('ipt',FV(draft.tk||S.tw))}}
+function setTool(t){tool=t;draft=null;drag=null;BD=null;hover=null;GP=[];$('wlw').style.display=t==='wall'?'':'none';document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));R()}
 function offChain(p,o){const n=p.length,L=[];for(let i=0;i<n-1;i++){let dx=p[i+1][0]-p[i][0],dy=p[i+1][1]-p[i][1];const l=Math.hypot(dx,dy)||1e-9;dx/=l;dy/=l;L.push({p:[p[i][0]-dy*o[i],p[i][1]+dx*o[i]],d:[dx,dy],l})}
  return p.map((_,j)=>{if(j===0)return L[0].p;if(j===n-1){const A=L[n-2];return[A.p[0]+A.d[0]*A.l,A.p[1]+A.d[1]*A.l]}const A=L[j-1],B=L[j],c=crs(A.d,B.d);if(Math.abs(c)<1e-9)return B.p;const s=crs([B.p[0]-A.p[0],B.p[1]-A.p[1]],B.d)/c;return[A.p[0]+A.d[0]*s,A.p[1]+A.d[1]*s]})}
 function refToCenter(p,closed,th){const m=S.bm,h=(th||S.tw)/2;if(m==='ctr'||p.length<2)return p;
@@ -390,9 +415,10 @@ const ortho=p=>{const l=draft.pts[draft.pts.length-1];return Math.abs(p[0]-l[0])
 const faceStep=()=>S.unit==='m'?.005:.0127;
 const mvW=()=>S.walls.filter(x=>MS.has(x.g)),labHit=m=>INFO.rooms.find(F=>F.lab&&Math.abs(m[0]-F.lab[0])<60&&Math.abs(m[1]-F.lab[1])<18);
 const startMove=(f,w,tog)=>{const all=f(),ws=all.filter(x=>!locked(x));if(!ws.length){drag=null;if(all.length)flash('Locked - unlock it first (Lock / Unlock button)');return}drag={t:'move',ws,st:w,o:ws.map(x=>[x.ax,x.ay,x.bx,x.by]),mv:0,tog}};
-cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);['ipw','iph','ipl'].forEach(id=>{const el=$(id);if(el)el.dataset.d=''});
  const m=[e.offsetX,e.offsetY],w=s2w(m),now=Date.now(),dbl=now-LT<350&&Math.hypot(m[0]-LP[0],m[1]-LP[1])<10;LT=dbl?0:now;LP=m;M=m;
  if(e.button===2&&tool==='wall'){if(draft){const r=wallPt(w,draft.pts[draft.pts.length-1],e.shiftKey),l=draft.pts[draft.pts.length-1],sp=r[0];if(Math.hypot(sp[0]-l[0],sp[1]-l[1])>1e-6){draft.pts.push(sp);draft.jh.push(r[2]?r[2].h:null);if(r[1]===1||r[1]===2)draft.sn=true;addLen(l,sp)}finishWall(false)}return}
+ if(e.button===2&&(tool==='box'||tool==='comp')&&BD){finishBox();return}
  if(e.button===1||e.button===2||space){drag={t:'pan',m};return}
  if(tool==='origin'){S.origin=snapPt(w,()=>false)[0];setTool('select');commit();return}
  if(tool==='select'||tool==='multi'){
@@ -417,7 +443,7 @@ cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);
   const r=wallPt(w,draft?draft.pts[draft.pts.length-1]:null,e.shiftKey),sp=r[0];
   if(!draft)draft={pts:[sp],sn:r[1]===1||r[1]===2,jh:[r[2]?r[2].h:null],tk:r[2]?r[2].tk:0,ls:r[2]?[r[2].len]:[],ty:'',cell:r[2]&&r[2].n?r[2]:null};else{const q=w2s(draft.pts[0]);if(draft.pts.length>=3&&Math.hypot(m[0]-q[0],m[1]-q[1])<12){finishWall(true);return}
    const l=draft.pts[draft.pts.length-1];if(Math.hypot(sp[0]-l[0],sp[1]-l[1])>1e-6){draft.pts.push(sp);draft.jh.push(r[2]?r[2].h:null);if(r[1]===1||r[1]===2)draft.sn=true;addLen(l,sp)}}}
- else drag={t:'box',a:snapPt(w,()=>false)[0],b:null,c:tool==='comp'};
+ else{const sp=snapPt(w,()=>false)[0];if(!BD)BD={t:'box',a:sp,b:sp.slice(),c:tool==='comp',fresh:true,follow:false};else{BD.b=sp;BD.follow=false;BD.fresh=false}drag=BD;boxGaps(BD)}
  R()});
 cv.addEventListener('pointermove',e=>{const m=[e.offsetX,e.offsetY],w=s2w(m);M=m;
  if(tool!=='select'&&tool!=='origin'&&tool!=='multi'){hover=tool==='wall'?wallPt(w,draft?draft.pts[draft.pts.length-1]:null,e.shiftKey):snapPt(w,()=>false)}else hover=null;
@@ -431,11 +457,11 @@ cv.addEventListener('pointermove',e=>{const m=[e.offsetX,e.offsetY],w=s2w(m);M=m
   else if(drag.t==='face'){if(!drag.mv){push();drag.mv=1}const x=drag.w,l=Math.hypot(x.bx-x.ax,x.by-x.ay)||1,d=-(w[0]-x.ax)*(x.by-x.ay)/l+(w[1]-x.ay)*(x.bx-x.ax)/l,q=faceStep(),sn=$('sn').checked;
    if(drag.sg>0)x.fl=Math.max(.002,sn?Math.round(d/q)*q:d);else x.fr=Math.max(.002,sn?Math.round(-d/q)*q:-d);drag.msg='wall width '+LB(x.fl+x.fr)}
   else if(drag.t==='box'){drag.b=hover[0];const a=drag.a,b=drag.b,t=S.bm==='in'?S.tw:S.bm==='out'?0:S.tw/2;GP=gaps([Math.min(a[0],b[0])-t,Math.min(a[1],b[1])-t,Math.max(a[0],b[0])+t,Math.max(a[1],b[1])+t],()=>false)}}
+ if(!drag&&BD&&BD.follow&&hover){BD.b=hover[0];boxGaps(BD)}
  R()});
 cv.addEventListener('pointerup',()=>{
  if(drag&&drag.unm&&!drag.mv)commit();
- if(drag&&drag.t==='box'&&drag.b&&S.bm==='out'&&(Math.abs(drag.b[0]-drag.a[0])<=S.tw||Math.abs(drag.b[1]-drag.a[1])<=S.tw))flash('Too small for this wall width at Outer size - draw bigger or use a thinner wall');
- else if(drag&&drag.t==='box'&&drag.b&&Math.abs(drag.b[0]-drag.a[0])>.05&&Math.abs(drag.b[1]-drag.a[1])>.05){push();mkBox(drag.a,drag.b,drag.c);MS=new Set([S.walls[S.walls.length-1].g]);commit();setTool('select')}
+ if(drag&&drag.t==='box'){if(drag.fresh){if(Math.hypot(drag.b[0]-drag.a[0],drag.b[1]-drag.a[1])*V.s<4)drag.follow=true;drag.fresh=false}}
  else if(drag&&drag.t==='marq'){const a=drag.a,b=drag.b,x0=Math.min(a[0],b[0]),x1=Math.max(a[0],b[0]),y0=Math.min(a[1],b[1]),y1=Math.max(a[1],b[1]);
   if(!drag.add)MS=new Set();S.walls.forEach(x=>{const q=qbox(x);if(q[0]<=x1&&q[2]>=x0&&q[1]<=y1&&q[3]>=y0)MS.add(x.g)});sel=null}
  else if(drag&&drag.mv)commit();
@@ -484,10 +510,11 @@ window.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.t
   if(e.key.length===1&&/[0-9.'"\u2032\u2033\u2019\u201d\sftinm-]/i.test(e.key)&&!(e.key===' '&&!draft.ty)){e.preventDefault();draft.ty+=e.key;R();return}
   if(e.key==='Backspace'&&draft.ty){e.preventDefault();draft.ty=draft.ty.slice(0,-1);R();return}
   if(e.key==='Enter'&&draft.ty){e.preventDefault();typedWall();return}}
+ if((tool==='box'||tool==='comp')&&BD&&e.key==='Tab'){e.preventDefault();const f=$('ipw');if(f){f.focus();f.select()}return}
  if(tool==='wall'&&e.key==='Tab'){e.preventDefault();cycleWL();return}
  if(e.key===' '){space=true;e.preventDefault()}else if(e.key==='Delete')delW(e.shiftKey);
  else if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo()}
- else if(e.key==='Escape'){draft=null;drag=null;setTool('select')}else if(e.key==='Enter'&&draft)finishWall(false);
+ else if(e.key==='Escape'){draft=null;drag=null;setTool('select')}else if(e.key==='Enter'&&draft)finishWall(false);else if(e.key==='Enter'&&BD&&(tool==='box'||tool==='comp'))finishBox();
  else if(e.key==='Backspace'&&draft){draft.pts.pop();draft.jh.pop();if(!draft.pts.length)draft=null;R()}});
 window.addEventListener('keyup',e=>{if(e.key===' ')space=false});
 function sync(){$('wl').value=S.wl||'ctr';updWL();$('lm').value=S.lm||'out';$('bm').value=S.bm||'in';$('sp').checked=!!S.sepNew;$('un').value=S.unit;$('tw').value=FV(S.tw);$('sw').value=FV(S.sheet[0]);$('sh').value=FV(S.sheet[1])}
