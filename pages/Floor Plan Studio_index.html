@@ -34,6 +34,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;displa
 <div class="g"><button id="zo">−</button><button id="fit">Fit</button><button id="zi">+</button></div>
 <div class="g"><button id="ud">Undo</button><button id="dl">Del wall</button><button id="dg">Del group</button></div>
 <div class="g"><button id="mg" title="Walls shared by touching rooms become ONE single wall that belongs to no room (it can be moved or deleted on its own)">Split intersecting walls</button><button id="sa" title="Turn every closed area into its own independent room with its own closed walls, so each one can be moved separately">Separate all rooms</button></div>
+<label title="Tick: Split / Separate only affect the rooms you have selected. Untick: they affect the whole drawing"><input type="checkbox" id="so">Selected rooms only</label>
+<div class="g"><button id="lk" title="Lock the selected rooms in place so they cannot be moved or deleted by accident (press again to unlock)">Lock / Unlock</button></div>
 <button id="pdf" class="pri">Export PDF</button>
 </div>
 <div id="main"><div id="cw"><canvas id="cv"></canvas></div><div id="side"></div></div>
@@ -137,6 +139,9 @@ function moveSnap(pts,ex,d){let best=null,bd=1e9;
 function hitW(p){const tol=6/V.s;for(let i=S.walls.length-1;i>=0;i--){const w=S.walls[i],dx=w.bx-w.ax,dy=w.by-w.ay,l=Math.hypot(dx,dy);if(l<1e-9)continue;const ux=dx/l,uy=dy/l,rx=p[0]-w.ax,ry=p[1]-w.ay,t=rx*ux+ry*uy,d=-rx*uy+ry*ux;
  if(t>=-tol&&t<=l+tol&&d<=w.fl+tol&&d>=-w.fr-tol)return{w,sg:d>=0?1:-1,d,t,l,ux,uy,rx,ry}}return null}
 const selW=()=>S.walls.find(w=>w.id===sel);
+const locked=w=>{const g=S.groups[w.g];return !!(g&&g.lock)||!!(w.sh&&w.sh.some(c=>S.groups[c.g]&&S.groups[c.g].lock))};
+let FLM='',FLU=0;function flash(t){FLM=t;FLU=Date.now()+3500;R();setTimeout(R,3600)}
+const selGroups=()=>{const gs=new Set(MS),w=selW();if(w)gs.add(w.g);return gs};
 function commit(){restore(c=>S.groups[c.g]&&S.groups[c.g].sep);const sp=g=>S.groups[g]&&S.groups[g].sep,gs=[...new Set(S.walls.filter(w=>sp(w.g)).map(w=>w.g))];
  let out=heal(fuse(planarize(S.walls.filter(w=>!sp(w.g)),true)));
  gs.forEach(g=>{out=out.concat(heal(dedupe(planarize(S.walls.filter(w=>w.g===g),true),true)))});S.walls=out;
@@ -189,6 +194,7 @@ function render(EX){
  const ext=(x,k)=>{const o=nd[k];if(o.length<2)return 0;const l=Math.hypot(x.bx-x.ax,x.by-x.ay)||1,sg=k===x.kb?1:-1,ux=sg*(x.bx-x.ax)/l,uy=sg*(x.by-x.ay)/l;let m=0;
   o.forEach(y=>{if(y===x)return;const ls=Math.hypot(y.bx-y.ax,y.by-y.ay)||1,st=y.ka===k,s2=st?1:-1,dx=s2*(y.bx-y.ax)/ls,dy=s2*(y.by-y.ay)/ls,c=-dy*ux+dx*uy,oL=st?y.fl:y.fr,oR=st?y.fr:y.fl;m=Math.max(m,c*oL,-c*oR)});return m};
  S.walls.forEach(x=>{const gm=S.groups[x.g];cx.beginPath();path(qd(x,ext(x,x.ka),ext(x,x.kb)));cx.fillStyle=gm&&gm.comp?C('--cp'):C('--wl');cx.fill()});
+ if(!EX)for(const g in S.groups)if(S.groups[g].lock){const b=gbox(+g);if(b){const p=w2s([b.x1,b.y0]);cx.font='13px system-ui';cx.textAlign='left';cx.textBaseline='middle';cx.fillStyle=C('--tx');cx.fillText('🔒',p[0]+3,p[1]-9)}}
  S.walls.forEach(x=>{if(MS.has(x.g)){cx.beginPath();path(qd(x,0,0));cx.setLineDash([5,3]);cx.strokeStyle=C('--sel');cx.lineWidth=1.5;cx.stroke();cx.setLineDash([])}});
  const sw_=selW();
  if(sw_){cx.beginPath();path(qd(sw_,0,0));cx.strokeStyle=C('--sel');cx.lineWidth=2;cx.stroke()}
@@ -230,7 +236,7 @@ function render(EX){
  if(M){cx.strokeStyle=C('--sel');cx.beginPath();cx.moveTo(M[0]+.5,0);cx.lineTo(M[0]+.5,RL);cx.moveTo(0,M[1]+.5);cx.lineTo(RL,M[1]+.5);cx.stroke()}
  side();status()}
 const HINT={select:'Double-click an area label to rename it / include walls · double-click inside a room for walls-separate option · Ctrl-click or Multi tool = multi-select · drag wall = move group (Shift = just that wall) · square handles = corners · round handles = each wall face · double-click wall/box to edit',box:'Drag to draw a box',comp:'Drag to draw the compound (land) boundary',wall:'Click points · click first point to close · double-click/Enter to finish · Shift = straight',multi:'Click walls/room labels to add or remove them, drag empty space to box-select, drag a selected wall to move all',origin:'Click the point that should become 0,0'};
-function status(){const w=M?s2w(M):null;$('st').textContent=HINT[tool]+'  |  '+(w?'x '+LB(w[0]-S.origin[0])+'  y '+LB(w[1]-S.origin[1])+'  |  ':'')+(drag&&drag.msg?drag.msg+'  |  ':'')+'zoom '+(+(V.s*FM()).toFixed(1))+' px/'+U[S.unit].l}
+function status(){const w=M?s2w(M):null;$('st').textContent=(Date.now()<FLU?'⚠ '+FLM+'  |  ':'')+HINT[tool]+'  |  '+(w?'x '+LB(w[0]-S.origin[0])+'  y '+LB(w[1]-S.origin[1])+'  |  ':'')+(drag&&drag.msg?drag.msg+'  |  ':'')+'zoom '+(+(V.s*FM()).toFixed(1))+' px/'+U[S.unit].l}
 function side(){let h='';
  INFO.lands.forEach(l=>h+='<div class="it"><b>'+l.n+'</b><i>land</i><div class="r"><span>Land (outer bound)</span><b>'+ar(l.land)+'</b></div><div class="r"><span>Inside walls (clear)</span><b>'+ar(l.clear)+'</b></div></div>');
  INFO.rooms.forEach(r=>h+='<div class="it">'+(r.meta&&r.meta.color?'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:'+r.meta.color+'"></span>':'')+'<b>'+esc(r.name)+'</b><div class="r"><span>'+(r.basis==='in'?'▸ ':'')+'Area (clear)</span><b>'+ar(r.net)+'</b></div><div class="r"><span>'+(r.basis==='out'?'▸ ':'')+'Area incl. walls</span><b>'+ar(r.outNet)+'</b></div></div>');
@@ -249,7 +255,8 @@ function boxDlg(g){restore(c=>c.g==g);const b=gbox(g),gm=S.groups[g];if(!b||!gm|
  const v=vals(m0,t0);
  dlg(gm.comp?'Compound (land)':'Box',[{id:'type',l:'Type',t:'sel',v:gm.comp?'c':'r',o:[['r','Room / house box'],['c','Compound (land boundary)']]},{id:'th',l:'Wall width',t:'text',v:FV(t0)},
   {id:'mode',l:'Size measured to',t:'sel',v:m0,o:[['in','Inner face (clear, no wall)'],['ctr','Wall centre line'],['out','Outer face (incl. wall)']]},
-  {id:'L',l:'Length (x)',t:'text',v:FV(v.L)},{id:'W',l:'Width (y)',t:'text',v:FV(v.W)},{id:'X',l:'Left edge X from 0,0',t:'text',v:FV(v.X)},{id:'Y',l:'Top edge Y from 0,0',t:'text',v:FV(v.Y)},{id:'sep',l:'Keep walls separate (overlap, no merge)',t:'chk',v:!!gm.sep}],r=>{
+  {id:'L',l:'Length (x)',t:'text',v:FV(v.L)},{id:'W',l:'Width (y)',t:'text',v:FV(v.W)},{id:'X',l:'Left edge X from 0,0',t:'text',v:FV(v.X)},{id:'Y',l:'Top edge Y from 0,0',t:'text',v:FV(v.Y)},{id:'sep',l:'Keep walls separate (overlap, no merge)',t:'chk',v:!!gm.sep},{id:'lock',l:'Lock in place (no accidental moves)',t:'chk',v:!!gm.lock}],r=>{
+  const was=gm.lock;gm.lock=r.lock;gm.comp=r.type==='c';gm.sep=r.sep;if(was&&r.lock)return;
   let th=PL(r.th);if(!(th>0))th=t0;const m=r.mode,vv=vals(m,th),Ln=PL(r.L),Wn=PL(r.W),Xn=PL(r.X),Yn=PL(r.Y);gm.comp=r.type==='c';gm.sep=r.sep;
   if(Math.abs(th-t0)>1e-6)b.ws.forEach(w=>{w.fl=w.fr=th/2});
   const d=m==='in'?2*vv.gi:m==='out'?-2*vv.go:0,o=m==='in'?vv.gi:m==='out'?-vv.go:0,L2=Ln+d,W2=Wn+d;
@@ -258,10 +265,10 @@ function boxDlg(g){restore(c=>c.g==g);const b=gbox(g),gm=S.groups[g];if(!b||!gm|
    b.ws.forEach(w=>{w.ax=nx+(w.ax-b.x0)*sx;w.bx=nx+(w.bx-b.x0)*sx;w.ay=ny+(w.ay-b.y0)*sy;w.by=ny+(w.by-b.y0)*sy})}},'');
  const upd=()=>{const t=PL($('f_th').value)||t0,x=vals($('f_mode').value,t);$('f_L').value=FV(x.L);$('f_W').value=FV(x.W);$('f_X').value=FV(x.X);$('f_Y').value=FV(x.Y)};$('f_mode').onchange=upd;$('f_th').onchange=upd}
 function shapeDlg(g){restore(c=>c.g==g);const gm=S.groups[g],ws=S.walls.filter(w=>w.g===g);if(!ws.length)return;const t0=ws.reduce((a,w)=>a+w.fl+w.fr,0)/ws.length;
- dlg('Shape ('+ws.length+' walls)',[{id:'type',l:'Type',t:'sel',v:gm.comp?'c':'r',o:[['r','Room / house'],['c','Compound (land boundary)']]},{id:'th',l:'Wall width (all walls)',t:'text',v:FV(t0)},{id:'sep',l:'Keep walls separate (overlap, no merge)',t:'chk',v:!!gm.sep}],r=>{
-  gm.comp=r.type==='c';gm.sep=r.sep;const t=PL(r.th);if(t>0&&Math.abs(t-t0)>1e-6)ws.forEach(w=>{w.fl=w.fr=t/2})})}
+ dlg('Shape ('+ws.length+' walls)',[{id:'type',l:'Type',t:'sel',v:gm.comp?'c':'r',o:[['r','Room / house'],['c','Compound (land boundary)']]},{id:'th',l:'Wall width (all walls)',t:'text',v:FV(t0)},{id:'sep',l:'Keep walls separate (overlap, no merge)',t:'chk',v:!!gm.sep},{id:'lock',l:'Lock in place (no accidental moves)',t:'chk',v:!!gm.lock}],r=>{
+  const was=gm.lock;gm.lock=r.lock;gm.comp=r.type==='c';gm.sep=r.sep;if(was&&r.lock)return;const t=PL(r.th);if(t>0&&Math.abs(t-t0)>1e-6)ws.forEach(w=>{w.fl=w.fr=t/2})})}
 function setT(p,sg,nt,mode){const c=sg>0?'fl':'fr',o=sg>0?'fr':'fl';if(mode==='this')p[c]=Math.max(.002,nt-p[o]);else if(mode==='other')p[o]=Math.max(.002,nt-p[c]);else{const d=(nt-p.fl-p.fr)/2;p.fl=Math.max(.001,p.fl+d);p.fr=Math.max(.001,p.fr+d)}}
-function wallDlg(h){restore(c=>c.g==h.w.g);const w=h.w,gm=S.groups[w.g],b=gm&&gm.kind==='box'?gbox(w.g):null;let inner=null;if(b)inner=(h.sg>0)===(faceIO(w,b).li===1);
+function wallDlg(h){if(locked(h.w)){flash('Locked - unlock it first (double-click inside the room to unlock)');return}restore(c=>c.g==h.w.g);const w=h.w,gm=S.groups[w.g],b=gm&&gm.kind==='box'?gbox(w.g):null;let inner=null;if(b)inner=(h.sg>0)===(faceIO(w,b).li===1);
  const L0=Math.hypot(w.bx-w.ax,w.by-w.ay);
  dlg('Wall — clicked side: '+(inner==null?(h.sg>0?'A':'B'):inner?'inner':'outer'),[{id:'th',l:'Wall width',t:'text',v:FV(w.fl+w.fr)},{id:'mv',l:'Change width by moving',t:'sel',v:'this',o:[['this','Clicked side only (other stays)'],['other','Opposite side only'],['both','Both sides equally']]},{id:'len',l:'Wall length (centre)',t:'text',v:FV(L0)}].concat(b?[{id:'all',l:'Apply width to all walls of this box',t:'chk',v:false}]:[]),r=>{
   const nt=PL(r.th);if(nt>0)(r.all&&b?b.ws:[w]).forEach(p=>{let sg=h.sg;if(p!==w){const li=faceIO(p,b).li;sg=inner?(li?1:-1):(li?-1:1)}setT(p,sg,nt,r.mv)});
@@ -275,7 +282,7 @@ function finishWall(closed){const p=draft.pts;draft=null;if(closed?p.length<3:p.
 const ortho=p=>{const l=draft.pts[draft.pts.length-1];return Math.abs(p[0]-l[0])>Math.abs(p[1]-l[1])?[p[0],l[1]]:[l[0],p[1]]};
 const faceStep=()=>S.unit==='m'?.005:.0127;
 const mvW=()=>S.walls.filter(x=>MS.has(x.g)),labHit=m=>INFO.rooms.find(F=>F.lab&&Math.abs(m[0]-F.lab[0])<60&&Math.abs(m[1]-F.lab[1])<18);
-const startMove=(f,w,tog)=>{const ws=f();drag={t:'move',ws,st:w,o:ws.map(x=>[x.ax,x.ay,x.bx,x.by]),mv:0,tog}};
+const startMove=(f,w,tog)=>{const all=f(),ws=all.filter(x=>!locked(x));if(!ws.length){drag=null;if(all.length)flash('Locked - unlock it first (Lock / Unlock button)');return}drag={t:'move',ws,st:w,o:ws.map(x=>[x.ax,x.ay,x.bx,x.by]),mv:0,tog}};
 cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);
  const m=[e.offsetX,e.offsetY],w=s2w(m),now=Date.now(),dbl=now-LT<350&&Math.hypot(m[0]-LP[0],m[1]-LP[1])<10;LT=dbl?0:now;LP=m;M=m;
  if(e.button===1||e.button===2||space){drag={t:'pan',m};return}
@@ -284,8 +291,8 @@ cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);
   const add=e.ctrlKey||e.metaKey||tool==='multi',sw_=selW(),lh=labHit(m);
   if(dbl&&lh){drag=null;roomDlg(lh);R();return}
   if(!dbl&&!add&&!lh&&sw_&&MS.size<2){const b=gbox(sw_.g);
-   for(const x of b.ws)for(const q of[[x.ax,x.ay],[x.bx,x.by]]){const k=key(...q);if(Math.hypot(w[0]-q[0],w[1]-q[1])<10/V.s){const um=restore(c=>c.g==sw_.g);drag={t:'node',k,ws:S.walls.filter(y=>y.g===sw_.g),mv:0,unm:um};R();return}}
-   const h2=hitW(w);if(h2&&h2.w===sw_&&(sw_.fl+sw_.fr)*V.s>14&&h2.t>=0&&h2.t<=h2.l){const df=Math.abs(h2.d-sw_.fl),dr=Math.abs(h2.d+sw_.fr);if(Math.min(df,dr)<6/V.s){drag={t:'face',w:sw_,sg:df<dr?1:-1,mv:0};R();return}}}
+   for(const x of b.ws)for(const q of[[x.ax,x.ay],[x.bx,x.by]]){const k=key(...q);if(Math.hypot(w[0]-q[0],w[1]-q[1])<10/V.s){if(locked(sw_)){flash('Locked - unlock it first');return}const um=restore(c=>c.g==sw_.g);drag={t:'node',k,ws:S.walls.filter(y=>y.g===sw_.g),mv:0,unm:um};R();return}}
+   const h2=hitW(w);if(h2&&h2.w===sw_&&(sw_.fl+sw_.fr)*V.s>14&&h2.t>=0&&h2.t<=h2.l){const df=Math.abs(h2.d-sw_.fl),dr=Math.abs(h2.d+sw_.fr);if(Math.min(df,dr)<6/V.s){if(locked(sw_)){flash('Locked - unlock it first');return}drag={t:'face',w:sw_,sg:df<dr?1:-1,mv:0};R();return}}}
   const hh=lh?null:hitW(w);
   if(dbl){if(hh){sel=hh.w.id;wallDlg(hh)}else{let best=null;for(const g in S.groups){const F=faces(S.walls.filter(x=>x.g==g).map(x=>({...x}))).bounded.filter(F=>inP(w,F.pts)).sort((a,b)=>a.A-b.A)[0];if(F&&(!best||F.A<best.a))best={g:+g,a:F.A}}if(best)(S.groups[best.g].kind==='box'?boxDlg:shapeDlg)(best.g)}drag=null;R();return}
   if(lh){const gs=[...new Set(lh.ws.map(x=>x.g))];sel=null;
@@ -329,7 +336,9 @@ function zoom(f,x,y){const wx=(x-V.ox)/V.s,wy=(y-V.oy)/V.s;V.s=Math.max(1,Math.m
 cv.addEventListener('wheel',e=>{e.preventDefault();zoom(Math.exp(-e.deltaY*.0015),e.offsetX,e.offsetY)},{passive:false});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 function fit(){const w=cv.clientWidth,h=cv.clientHeight,m=34;V.s=Math.max(1,Math.min((w-m-RL)/S.sheet[0],(h-m-RL)/S.sheet[1]));V.ox=RL+(w-RL-S.sheet[0]*V.s)/2;V.oy=RL+(h-RL-S.sheet[1]*V.s)/2;R()}
-function delW(grp){const w=selW();if(!w&&!(grp&&MS.size))return;push();if(grp){const gs=MS.size?MS:new Set([w.g]);S.walls=S.walls.filter(x=>!gs.has(x.g));MS=new Set()}else S.walls=S.walls.filter(x=>x!==w);sel=null;commit();R()}
+function delW(grp){const w=selW();if(!w&&!(grp&&MS.size))return;const gs=grp?(MS.size?MS:new Set([w.g])):null,hit=x=>grp?gs.has(x.g):x===w;
+ if(S.walls.some(x=>hit(x)&&locked(x))){flash('Locked - unlock it before deleting');if(S.walls.every(x=>!hit(x)||locked(x)))return}
+ push();S.walls=S.walls.filter(x=>!hit(x)||locked(x));if(grp)MS=new Set();sel=null;commit();R()}
 function doUndo(){if(!undo.length)return;const s=JSON.parse(undo.pop());S.walls=s.w;S.groups=s.g;S.origin=s.o;S.rooms=s.r||[];MS=new Set();draft=null;commit();R()}
 window.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
  if(e.key===' '){space=true;e.preventDefault()}else if(e.key==='Delete')delW(e.shiftKey);
@@ -343,18 +352,19 @@ $('un').onchange=e=>{S.unit=e.target.value;sync();commit();R()};
 $('tw').onchange=e=>{const v=PL(e.target.value);if(v>0)S.tw=v;sync();commit()};
 $('sw').onchange=$('sh').onchange=()=>{const a=PL($('sw').value),b=PL($('sh').value);if(a>0&&b>0)S.sheet=[a,b];sync();commit();R()};
 function setAllSep(v){push();for(const g in S.groups)S.groups[g].sep=v;commit();R()}
-$('mg').onclick=()=>setAllSep(false);
+$('mg').onclick=()=>{if($('so').checked){const gs=selGroups();if(!gs.size){flash('Select the rooms first (or untick "Selected rooms only")');return}push();gs.forEach(g=>{if(S.groups[g])S.groups[g].sep=false});commit();R()}else setAllSep(false)};
 // every closed area (room) of the drawing becomes its own independent room with its own closed ring of walls
-function separateRooms(){push();
- const G=dedupe(planarize(S.walls.map(w=>({...w})),false)),F=faces(G).bounded,used=new Set(),nw=[],pk=w=>{const a=key(w.ax,w.ay),b=key(w.bx,w.by);return a<b?a+'|'+b:b+'|'+a};
- F.forEach(f=>{const g=S.gid++,list=[];let cl=0,al=0;
-  f.ws.forEach((w,i)=>{used.add(pk(w));const p=f.pts[i],q=f.pts[(i+1)%f.pts.length],r=f.hd[i],l=Math.hypot(q[0]-p[0],q[1]-p[1]);al+=l;if(S.groups[w.g]&&S.groups[w.g].comp)cl+=l;
+function separateRooms(only){push();if(only)restore(c=>only.has(c.g));
+ const U=only?S.walls.filter(w=>only.has(w.g)):S.walls,rest=only?S.walls.filter(w=>!only.has(w.g)):[],ng=[],G=dedupe(planarize(U.map(w=>({...w})),false)),F=faces(G).bounded,used=new Set(),nw=[],pk=w=>{const a=key(w.ax,w.ay),b=key(w.bx,w.by);return a<b?a+'|'+b:b+'|'+a};
+ F.forEach(f=>{const g=S.gid++,list=[];let cl=0,al=0,ll=0;
+  f.ws.forEach((w,i)=>{used.add(pk(w));const p=f.pts[i],q=f.pts[(i+1)%f.pts.length],r=f.hd[i],l=Math.hypot(q[0]-p[0],q[1]-p[1]);al+=l;if(S.groups[w.g]&&S.groups[w.g].comp)cl+=l;if(locked(w))ll+=l;
    list.push({id:S.nid++,g,ax:p[0],ay:p[1],bx:q[0],by:q[1],fl:r?w.fr:w.fl,fr:r?w.fl:w.fr})});
   const L=heal(list),rect=L.length===4&&L.every(w=>Math.abs(w.ax-w.bx)<1e-6||Math.abs(w.ay-w.by)<1e-6);
-  S.groups[g]={kind:rect?'box':'wall',comp:cl>al/2,sep:true};nw.push(...L)});
+  S.groups[g]={kind:rect?'box':'wall',comp:cl>al/2,sep:true,lock:ll>al/2};ng.push(g);nw.push(...L)});
  G.forEach(w=>{if(!used.has(pk(w))){const c={...w,id:S.nid++};delete c.sh;nw.push(c)}});
- S.walls=nw;commit();MS=new Set();sel=null;R()}
-$('sa').onclick=separateRooms;
+ S.walls=rest.concat(nw);commit();MS=only?new Set(ng):new Set();sel=null;R()}
+$('sa').onclick=()=>{if($('so').checked){const gs=selGroups();if(!gs.size){flash('Select the rooms first (or untick "Selected rooms only")');return}separateRooms(gs)}else separateRooms(null)};
+$('lk').onclick=()=>{const gs=[...selGroups()].filter(g=>S.groups[g]);if(!gs.length){flash('Select a room first, then press Lock / Unlock');return}const all=gs.every(g=>S.groups[g].lock);push();gs.forEach(g=>S.groups[g].lock=!all);commit();R();flash(all?'Unlocked '+gs.length+' selected':'Locked '+gs.length+' selected - they cannot be moved')};
 $('sn').onchange=$('dm').onchange=R;$('sp').onchange=e=>{S.sepNew=e.target.checked;commit()};
 $('zi').onclick=()=>zoom(1.25,cv.clientWidth/2,cv.clientHeight/2);$('zo').onclick=()=>zoom(.8,cv.clientWidth/2,cv.clientHeight/2);
 $('fit').onclick=fit;$('ud').onclick=doUndo;$('dl').onclick=()=>delW(false);$('dg').onclick=()=>delW(true);
