@@ -28,12 +28,13 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;displa
 @media(max-width:720px){#main{flex-direction:column}#side{width:auto;height:30%;border-left:0;border-top:1px solid var(--bd)}}
 </style></head><body>
 <div id="tb">
-<div class="g"><button data-t="select" class="on">Select</button><button data-t="multi">Multi</button><button data-t="box">Box</button><button data-t="comp">Compound</button><button data-t="wall">Wall</button><button data-t="origin">Set 0,0</button></div>
+<div class="g"><button data-t="select" class="on">Select</button><button data-t="multi">Multi</button><button data-t="box">Box</button><button data-t="comp">Compound</button><button data-t="wall">Wall</button><button data-t="door" title="Click on a wall to place a door. Double-click a door (Select tool) to set its length, swing side, hinge and open angle">Door</button><button data-t="origin">Set 0,0</button></div>
 <label>Unit <select id="un"><option value="ftin">Feet + inches</option><option value="ft">Decimal feet</option><option value="m">Meters</option></select></label>
 <label>Wall width <input id="tw" type="text"></label>
 <label title="What the size you draw refers to: Inner = clear room size, Outer = size including walls, Centre = wall centre line">Draw size = <select id="bm"><option value="in">Inner face</option><option value="out">Outer face</option><option value="ctr">Centre line</option></select></label>
+<label id="dww" style="display:none" title="Opening length of the next door (its width seen from above)">Door width <input id="dw" type="text"></label>
 <label id="wlw" style="display:none" title="Which part of the wall the line you draw / type is. Top or Bottom for horizontal walls, Left or Right for vertical walls. Tab = cycle. (Closed rooms use 'Draw size' instead.)">Wall line = <select id="wl"><option value="tl"></option><option value="ctr"></option><option value="br"></option></select></label>
-<label><input type="checkbox" id="sn" checked>Snap</label><label title="New boxes/walls overlap other walls instead of merging with them"><input type="checkbox" id="sp">Keep new walls separate</label><label><input type="checkbox" id="dm" checked>Lengths</label><label title="Which line the wall length labels measure along">of <select id="lm"><option value="out">Outer face</option><option value="ctr">Centre line</option><option value="in">Inner face</option></select></label>
+<label><input type="checkbox" id="sn" checked>Snap</label><label title="New boxes/walls overlap other walls instead of merging with them"><input type="checkbox" id="sp">Keep new walls separate</label><label><input type="checkbox" id="dm" checked>Lengths</label><label title="Which line the wall length labels measure along">of <select id="lm"><option value="out">Outer face</option><option value="ctr">Centre line</option><option value="in">Inner face</option><option value="both">Outer + Inner (both)</option></select></label>
 <label>Canvas <input id="sw" type="text"> × <input id="sh" type="text"></label>
 <div class="g"><button id="zo">−</button><button id="fit">Fit</button><button id="zi">+</button></div>
 <div class="g"><button id="ud">Undo</button><button id="dl">Del wall</button><button id="dg">Del group</button></div>
@@ -47,9 +48,9 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;displa
 <div id="st"></div><div id="ov"><div id="db"></div></div>
 <script>
 const U={ftin:{f:.3048,l:'ft',a:'sq ft'},ft:{f:.3048,l:'ft',a:'sq ft'},m:{f:1,l:'m',a:'sq m'}},RL=22;
-let S={unit:'ftin',sheet:[30.48,18.288],walls:[],groups:{},rooms:[],nid:1,gid:1,tw:.2286,bm:'in',lm:'out',wl:'ctr',origin:[0,0]};
+let S={unit:'ftin',sheet:[30.48,18.288],walls:[],groups:{},rooms:[],doors:[],did:0,dw:.9144,nid:1,gid:1,tw:.2286,bm:'in',lm:'both',wl:'ctr',origin:[0,0]};
 try{const j=JSON.parse(localStorage.getItem('fp2'));if(j&&j.walls)S=Object.assign(S,j)}catch(e){}
-let JP=[],JC=[],EQ=null,LASTO=null,BD=null;
+let JP=[],JC=[],EQ=null,LASTO=null,BD=null,selD=null,DH=null;
 // face the new wall starts from when drawn in direction n*s (it starts on the opposite face and runs through the host)
 const cellFace=(c,s)=>{const dx=c.n[0]*s,dy=c.n[1]*s;return Math.abs(dy)>=Math.abs(dx)?(dy>0?'top':'bottom'):(dx>0?'left':'right')};
 const cellStart=(c,s)=>{const o=s>0?-c.fr:c.fl;return[c.p[0]+c.n[0]*o,c.p[1]+c.n[1]*o]};
@@ -158,7 +159,7 @@ function commit(){restore(c=>S.groups[c.g]&&S.groups[c.g].sep);const sp=g=>S.gro
  let out=heal(fuse(planarize(S.walls.filter(w=>!sp(w.g)),true)));
  gs.forEach(g=>{out=out.concat(heal(dedupe(planarize(S.walls.filter(w=>w.g===g),true),true)))});S.walls=out;
  for(const g in S.groups)if(!S.walls.some(w=>w.g==g||(w.sh&&w.sh.some(c=>c.g==g))))delete S.groups[g];try{localStorage.setItem('fp2',JSON.stringify(S,(k,v)=>k==='ka'||k==='kb'?undefined:v))}catch(e){}}
-const push=()=>{undo.push(JSON.stringify({w:S.walls,g:S.groups,o:S.origin,r:S.rooms}));if(undo.length>80)undo.shift()};
+const push=()=>{undo.push(JSON.stringify({w:S.walls,g:S.groups,o:S.origin,r:S.rooms,d:S.doors}));if(undo.length>80)undo.shift()};
 const R=()=>{if(!raf){raf=1;requestAnimationFrame(()=>{raf=0;render()})}};
 function mkBox(a,b,comp){const g=S.gid++;S.groups[g]={kind:'box',comp,sep:!!S.sepNew};const d=S.bm==='in'?S.tw/2:S.bm==='out'?-S.tw/2:0,x0=Math.min(a[0],b[0])-d,x1=Math.max(a[0],b[0])+d,y0=Math.min(a[1],b[1])-d,y1=Math.max(a[1],b[1])+d,P=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
  P.forEach((p,i)=>{const q=P[(i+1)%4];S.walls.push({id:S.nid++,g,ax:p[0],ay:p[1],bx:q[0],by:q[1],fl:S.tw/2,fr:S.tw/2})});sel=S.walls[S.walls.length-1].id}
@@ -182,6 +183,47 @@ function livePts(){const P=[],seen={},add=(p,c)=>{const k=key(p[0],p[1]);if(!see
  return P}
 let INFO={rooms:[],lands:[]};
 const PAL={'--bg':'#fff','--pn':'#fff','--tx':'#1d1d1b','--mu':'#6b6a63','--bd':'#d0cdc0','--ac':'#0f6e56','--cv':'#fff','--gr':'#ebe8dd','--gm':'#d6d2c3','--wl':'#3a3a36','--cp':'#8a5a1e','--sel':'#d4541a'};
+// Visible length of each wall's two faces. A face counts along the whole straight edge of the drawing it is part of
+// (neighbouring walls' collinear end faces continue it) and stops where another wall's body covers it.
+function outlineLens(PB){const E=1e-5,A=P=>{let a=0;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];a+=p[0]*q[1]-q[0]*p[1]}return a};
+ const sgn=PB.map(P=>A(P)>=0?1:-1);
+ const faceLen=(P0,P1,self)=>{const dx=P1[0]-P0[0],dy=P1[1]-P0[1],L=Math.hypot(dx,dy);if(L<E)return L;const ux=dx/L,uy=dy/L,tt=p=>(p[0]-P0[0])*ux+(p[1]-P0[1])*uy,dd=p=>Math.abs((p[0]-P0[0])*uy-(p[1]-P0[1])*ux);
+  let bnd=[[0,L]];const cov=[];
+  PB.forEach((Q,j)=>{if(j===self)return;const n=Q.length;
+   for(let k=0;k<n;k++){const a=Q[k],b=Q[(k+1)%n];if(dd(a)<E&&dd(b)<E){const t1=tt(a),t2=tt(b);bnd.push([Math.min(t1,t2),Math.max(t1,t2)])}}
+   let lo=-1e9,hi=1e9,ok=true;const ins=[];
+   for(let k=0;k<n&&ok;k++){const a=Q[k],b=Q[(k+1)%n],ex=b[0]-a[0],ey=b[1]-a[1],el=Math.hypot(ex,ey)||1,nx=-ey/el*sgn[j],ny=ex/el*sgn[j],den=ux*nx+uy*ny,f0=(P0[0]-a[0])*nx+(P0[1]-a[1])*ny;ins.push([nx,ny,a]);
+    if(Math.abs(den)<1e-12){if(f0<-E)ok=false}else{const t=-f0/den;if(den>0)lo=Math.max(lo,t);else hi=Math.min(hi,t)}}
+   if(ok&&hi-lo>E){const m=(lo+hi)/2,p=[P0[0]+ux*m,P0[1]+uy*m];if(ins.every(([nx,ny,a])=>(p[0]-a[0])*nx+(p[1]-a[1])*ny>E))cov.push([lo,hi])}});
+  bnd.sort((a,b)=>a[0]-b[0]);let mg=[];bnd.forEach(r=>{const l=mg[mg.length-1];if(l&&r[0]<=l[1]+E)l[1]=Math.max(l[1],r[1]);else mg.push(r.slice())});
+  cov.forEach(([c0,c1])=>{const nx=[];mg.forEach(([s,e])=>{if(c1<=s+E||c0>=e-E)nx.push([s,e]);else{if(c0>s+E)nx.push([s,c0]);if(c1<e-E)nx.push([c1,e])}});mg=nx});
+  const hit=mg.find(([s,e])=>L/2>=s-E&&L/2<=e+E);return hit?hit[1]-hit[0]:L};
+ return PB.map((P,i)=>{const a=faceLen(P[0],P[1],i),b=faceLen(P[3],P[2],i);return{out:Math.max(a,b),in:Math.min(a,b)}})}
+// ---- doors: an opening in a wall with a leaf and its swing arc. Only the drawing is cut - wall areas stay unchanged.
+function doorGeom(d){const gm=S.groups[d.g],sx=gm?(gm.dx||0)-(d.dx0||0):0,sy=gm?(gm.dy||0)-(d.dy0||0):0,u=d.u;let host=null,bd=1e9,c=[d.c[0]+sx,d.c[1]+sy];
+ for(const cc of(sx||sy?[c,d.c]:[c])){c=cc;S.walls.forEach(w=>{const ex=w.bx-w.ax,ey=w.by-w.ay,l=Math.hypot(ex,ey);if(l<1e-9)return;const ux=ex/l,uy=ey/l;if(Math.abs(ux*u[1]-uy*u[0])>1e-6)return;
+  const dist=Math.abs((c[0]-w.ax)*uy-(c[1]-w.ay)*ux),t=(c[0]-w.ax)*ux+(c[1]-w.ay)*uy;if(dist<2e-3&&t>=-2e-3&&t<=l+2e-3&&dist<bd){bd=dist;host=w}});if(host)break}
+ let fl=d.tk/2,fr=d.tk/2;
+ if(host){const hl=Math.hypot(host.bx-host.ax,host.by-host.ay),same=((host.bx-host.ax)*u[0]+(host.by-host.ay)*u[1])/hl>=0;fl=same?host.fl:host.fr;fr=same?host.fr:host.fl;
+  d.c=c;d.g=host.g;const g2=S.groups[host.g]||{};d.dx0=g2.dx||0;d.dy0=g2.dy||0}
+ const n=[-u[1],u[0]],hw=d.w/2,P=(a,b)=>[c[0]+u[0]*a+n[0]*b,c[1]+u[1]*a+n[1]*b];
+ return{c:host?d.c:c,u,n,fl,fr,w:d.w,host,poly:[P(hw,fl),P(-hw,fl),P(-hw,-fr),P(hw,-fr)]}}
+function doorLeaf(d,g){const hw=g.w/2,sn=[g.n[0]*d.s,g.n[1]*d.s],H=[g.c[0]+g.u[0]*d.h*hw,g.c[1]+g.u[1]*d.h*hw],cl=[-g.u[0]*d.h,-g.u[1]*d.h],th=d.a*Math.PI/180,
+ od=[cl[0]*Math.cos(th)+sn[0]*Math.sin(th),cl[1]*Math.cos(th)+sn[1]*Math.sin(th)];return{H,T:[H[0]+od[0]*g.w,H[1]+od[1]*g.w],cl,od,sn}}
+function hingeSide(d,g){const L=doorLeaf(d,g),r=[L.sn[1],-L.sn[0]];return(g.u[0]*d.h*r[0]+g.u[1]*d.h*r[1])>0?'R':'L'}
+function hitDoor(w){for(let i=S.doors.length-1;i>=0;i--){const d=S.doors[i],g=doorGeom(d),pad=6/V.s,dx=w[0]-g.c[0],dy=w[1]-g.c[1],t=dx*g.u[0]+dy*g.u[1],dn=dx*g.n[0]+dy*g.n[1],L=doorLeaf(d,g);
+  if((Math.abs(t)<=g.w/2+pad&&dn<=g.fl+pad&&dn>=-g.fr-pad)||seg(w,L.H,L.T).d<pad)return d}return null}
+function newDoor(h){const wl=h.w,half=Math.min(S.dw/2,h.l/2),fl=10/V.s;let t=Math.max(half,Math.min(h.l-half,h.t));
+ if(Math.abs(t-h.l/2)<fl)t=h.l/2;else if(t-half<fl)t=half;else if(h.l-half-t<fl)t=h.l-half;
+ const u=[h.ux,h.uy],gm=S.groups[wl.g]||{},d={id:++S.did,c:[wl.ax+u[0]*t,wl.ay+u[1]*t],u,s:h.sg,h:1,w:S.dw,a:90,tk:wl.fl+wl.fr,g:wl.g,dx0:gm.dx||0,dy0:gm.dy||0};
+ const g=doorGeom(d);d.h=((g.u[0]*(-g.n[0]*d.s)*0)+1);if(hingeSide(d,g)!=='L')d.h=-1;return d}
+function drawDoor(cx,d,g,C,sel,alpha){const L=doorLeaf(d,g),hw=g.w/2,col=sel?C('--sel'):C('--tx');cx.save();cx.globalAlpha=alpha||1;
+ const j=(sg)=>{const a=w2s([g.c[0]+g.u[0]*hw*sg+g.n[0]*g.fl,g.c[1]+g.u[1]*hw*sg+g.n[1]*g.fl]),b=w2s([g.c[0]+g.u[0]*hw*sg-g.n[0]*g.fr,g.c[1]+g.u[1]*hw*sg-g.n[1]*g.fr]);cx.moveTo(a[0],a[1]);cx.lineTo(b[0],b[1])};
+ cx.strokeStyle=col;cx.lineWidth=2;cx.beginPath();j(1);j(-1);cx.stroke();
+ const h=w2s(L.H),t=w2s(L.T),r=g.w*V.s;
+ if(d.a>1){const a0=Math.atan2(L.cl[1],L.cl[0]),a1=Math.atan2(L.od[1],L.od[0]);cx.setLineDash([5,4]);cx.lineWidth=1.2;cx.beginPath();cx.arc(h[0],h[1],r,a0,a1,(L.cl[0]*L.od[1]-L.cl[1]*L.od[0])<0);cx.stroke();cx.setLineDash([])}
+ cx.lineWidth=Math.max(2.5,.05*V.s);cx.lineCap='butt';cx.beginPath();cx.moveTo(h[0],h[1]);cx.lineTo(t[0],t[1]);cx.stroke();
+ cx.fillStyle=col;cx.beginPath();cx.arc(h[0],h[1],Math.max(2.5,.03*V.s),0,7);cx.fill();cx.restore()}
 function render(EX){
  if(!EX&&tool==='wall')updWL();
  const w=EX?EX.w:cv.clientWidth,h=EX?EX.h:cv.clientHeight,st=getComputedStyle(document.documentElement),C=n=>EX?PAL[n]:st.getPropertyValue(n).trim(),f=FM(),[ox,oy]=S.origin,cx0=cx;
@@ -223,16 +265,23 @@ function render(EX){
   const ux=dx/L,uy=dy/L;[0,1].forEach(isB=>{if(nd[isB?x.kb:x.ka].length>1)return;const e=isB?[x.bx,x.by]:[x.ax,x.ay],sg=isB?-1:1;
    JC.push({p:[e[0]+sg*ux*tk/2,e[1]+sg*uy*tk/2],e,tk,len:L,n:[-uy,ux],fl:x.fl,fr:x.fr,id:x.id,h:{ax:x.ax,ay:x.ay,bx:x.bx,by:x.by,tk}})})});
  if(!EX){const gs=selGroups(),ws=S.walls.filter(x=>gs.has(x.g));SELBB=null;if(ws.length){const b=[1e9,1e9,-1e9,-1e9];ws.forEach(x=>(MM==='out'?wp(x):[[x.ax,x.ay],[x.bx,x.by]]).forEach(q=>{b[0]=Math.min(b[0],q[0]);b[1]=Math.min(b[1],q[1]);b[2]=Math.max(b[2],q[0]);b[3]=Math.max(b[3],q[1])}));SELBB=b}}
+ const DG=S.doors.map(d=>({d,g:doorGeom(d)}));
+ cx.save();if(DG.length){cx.beginPath();cx.rect(-1e6,-1e6,2e6,2e6);DG.forEach(o=>path(o.g.poly));cx.clip('evenodd')}
  S.walls.forEach(x=>{const gm=S.groups[x.g];cx.beginPath();path(wp(x));cx.fillStyle=gm&&gm.comp?C('--cp'):C('--wl');cx.fill()});
+ cx.restore();
  if(!EX)for(const g in S.groups)if(S.groups[g].lock){const b=gbox(+g);if(b){const p=w2s([b.x1,b.y0]);cx.font='13px system-ui';cx.textAlign='left';cx.textBaseline='middle';cx.fillStyle=C('--tx');cx.fillText('🔒',p[0]+3,p[1]-9)}}
  S.walls.forEach(x=>{if(MS.has(x.g)){cx.beginPath();path(wp(x));cx.setLineDash([5,3]);cx.strokeStyle=C('--sel');cx.lineWidth=1.5;cx.stroke();cx.setLineDash([])}});
  const sw_=selW();
  if(sw_){cx.beginPath();path(wp(sw_));cx.strokeStyle=C('--sel');cx.lineWidth=2;cx.stroke()}
+ DG.forEach(o=>drawDoor(cx,o.d,o.g,C,!EX&&o.d.id===selD,1));
+ if(!EX&&tool==='door'&&DH){const g=doorGeom(DH);drawDoor(cx,DH,g,C,false,.55);cx.font='bold 11px system-ui';cx.textBaseline='middle';const q=w2s(g.c);halo(LB(DH.w)+' door',q[0]+12,q[1]-14,C,'left')}
+ if(!EX&&selD!=null){const d=S.doors.find(x=>x.id===selD);if(d){const g=doorGeom(d),q=w2s(g.c);cx.font='bold 11px system-ui';cx.textBaseline='middle';halo('door '+LB(d.w)+' · double-click to edit',q[0]+12,q[1]-14,C,'left')}}
  cx.font='11px system-ui';cx.textBaseline='middle';
- const WL={},pk2=w=>w.ka<w.kb?w.ka+'|'+w.kb:w.kb+'|'+w.ka;
- FC.bounded.forEach(f=>f.ws.forEach((w,i)=>{const n=f.pts.length,a=f.poly[i],b=f.poly[(i+1)%n],c=f.op[i],d=f.op[(i+1)%n],k=pk2(w),e=WL[k]||(WL[k]={in:0,out:0});e.in=Math.max(e.in,Math.hypot(b[0]-a[0],b[1]-a[1]));e.out=Math.max(e.out,Math.hypot(d[0]-c[0],d[1]-c[1]))}));
- const lenOf=x=>{const e=WL[pk2(x)],m=S.lm||'out';return e&&m!=='ctr'?(m==='in'?e.in:e.out):Math.hypot(x.bx-x.ax,x.by-x.ay)};
- if($('dm').checked)S.walls.forEach(x=>{const l=lenOf(x);if(l*V.s<60)return;const m=w2s([(x.ax+x.bx)/2,(x.ay+x.by)/2]);halo(LB(l),m[0],m[1],C)});
+ const PB=S.walls.map(wp),OL=$('dm').checked&&S.lm!=='ctr'?outlineLens(PB):null;
+ if($('dm').checked)S.walls.forEach((x,i)=>{const cl=Math.hypot(x.bx-x.ax,x.by-x.ay);if(cl*V.s<60)return;const m=w2s([(x.ax+x.bx)/2,(x.ay+x.by)/2]),e=OL?OL[i]:null,lm=S.lm||'out';
+  if(!e)halo(LB(cl),m[0],m[1],C);
+  else if(lm==='both'){const hz=Math.abs(x.bx-x.ax)>=Math.abs(x.by-x.ay),dy=hz?7:0,dx=hz?0:26;halo('out '+LB(e.out),m[0]+dx,m[1]-dy,C);halo('in '+LB(e.in),m[0]+dx,m[1]+dy+(hz?0:14),C)}
+  else halo(LB(lm==='in'?e.in:e.out),m[0],m[1],C)});
  cx.font='bold 12px system-ui';
  const QD=S.walls.map(x=>qd(x,0,0));
  rooms.forEach(r=>{if(!r.ip)return;const xs=r.poly.map(p=>p[0]),ys=r.poly.map(p=>p[1]);if((Math.max(...xs)-Math.min(...xs))*V.s<28||(Math.max(...ys)-Math.min(...ys))*V.s<18)return;
@@ -256,8 +305,9 @@ function render(EX){
   if(S.wl&&S.wl!=='ctr'||pts.length>1){cx.save();cx.lineWidth=1.5;cx.setLineDash([6,4]);cx.beginPath();pts.forEach((p,i)=>{const q=w2s(p);i?cx.lineTo(q[0],q[1]):cx.moveTo(q[0],q[1])});cx.stroke();cx.restore()}
   draft.pts.forEach(p=>{const q=w2s(p);cx.beginPath();cx.arc(q[0],q[1],3,0,7);cx.fill()});
   cx.font='bold 11px system-ui';cx.textBaseline='middle';
-  for(let i=0;i<pts.length-1;i++){const l=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]);if(l*V.s<30)continue;const a=w2s(pts[i]),b=w2s(pts[i+1]),mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2,hz=Math.abs(b[0]-a[0])>=Math.abs(b[1]-a[1]);
-   halo(LB(l)+(hover&&i===pts.length-2&&EQ!==null?'  = same':''),hz?mx:mx+26,hz?my-14:my,C)}
+  for(let i=0;i<pts.length-1;i++){const l=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]);if(l*V.s<30)continue;const a=w2s(pts[i]),b=w2s(pts[i+1]),mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2,hz=Math.abs(b[0]-a[0])>=Math.abs(b[1]-a[1]),half=tk*V.s/2,inn=l-2*tk,
+    t1='outer '+LB(l)+(hover&&i===pts.length-2&&EQ!==null?'  = same':''),t2='inner '+(inn>1e-6?LB(inn):'- (too short)'),x=hz?mx:mx+half+12,al=hz?'center':'left',y1=hz?my-half-26:my-8,y2=hz?my-half-11:my+8;
+   halo(t1,x,y1,C,al);cx.textAlign=al;cx.lineWidth=3;cx.strokeStyle=C('--cv');cx.strokeText(t2,x,y2);cx.fillStyle=C('--ac');cx.fillText(t2,x,y2)}
   if(!EX){const q=w2s(hover?hover[0]:draft.pts[draft.pts.length-1]);cx.font='bold 12px system-ui';
    if(draft.ty)halo('\u2328 '+draft.ty+'\u258f  (Enter = place)',q[0]+14,q[1]+26,C,'left');
    else if(draft.cell&&draft.pts.length===1)halo('joint: starts at '+cellFace(draft.cell,draft.cs||1)+' face',q[0]+14,q[1]+26,C,'left');
@@ -284,11 +334,11 @@ function render(EX){
  cx.fillStyle=C('--ac');cx.textAlign='left';cx.fillText(U[S.unit].l,3,6);
  if(M){cx.strokeStyle=C('--sel');cx.beginPath();cx.moveTo(M[0]+.5,0);cx.lineTo(M[0]+.5,RL);cx.moveTo(0,M[1]+.5);cx.lineTo(RL,M[1]+.5);cx.stroke()}
  side();status();updateMv()}
-const HINT={select:'Double-click an area label to rename it / include walls · double-click inside a room for walls-separate option · Ctrl-click or Multi tool = multi-select · drag wall = move group (Shift = just that wall) · square handles = corners · round handles = each wall face · double-click wall/box to edit',box:'Click or drag the first corner, then click the opposite corner · it is NOT finished until you RIGHT-CLICK (or Enter) · type exact Width / Length in the box below (Tab) · Esc cancels',comp:'Click or drag the first corner, then click the opposite corner of the compound (land) boundary · RIGHT-CLICK (or Enter) finishes · type exact Width / Length in the box below (Tab) · Esc cancels',wall:'Click points, or type a length + Enter (e.g. 5\') · green dots = join points at the free end of a wall (half a wall-width in from the end): click one, then drag above/below (or left/right) - the new wall has the same thickness, starts on the opposite face and is measured from it · diamonds = joint points on existing walls (both faces): start from one and the new wall copies its thickness and length · Wall line = which face/centre your line is (Tab cycles) · matching lengths snap (= same) · click the first point or type back to it to close a room (uses Draw size) · RIGHT-CLICK / Enter (empty) finishes · Backspace undoes a point · Esc cancels · Shift = force straight',multi:'Click walls/room labels to add or remove them, drag empty space to box-select, drag a selected wall to move all',origin:'Click the point that should become 0,0'};
+const HINT={door:'Click on a wall to place a door (it opens toward the side you click) · Select tool: drag a door along its wall, double-click it to set length, in/out side, hinge side and open angle · Delete removes it',select:'Double-click an area label to rename it / include walls · double-click inside a room for walls-separate option · Ctrl-click or Multi tool = multi-select · drag wall = move group (Shift = just that wall) · square handles = corners · round handles = each wall face · double-click wall/box to edit',box:'Click or drag the first corner, then click the opposite corner · it is NOT finished until you RIGHT-CLICK (or Enter) · type exact Width / Length in the box below (Tab) · Esc cancels',comp:'Click or drag the first corner, then click the opposite corner of the compound (land) boundary · RIGHT-CLICK (or Enter) finishes · type exact Width / Length in the box below (Tab) · Esc cancels',wall:'Click points, or type a length + Enter (e.g. 5\') · green dots = join points at the free end of a wall (half a wall-width in from the end): click one, then drag above/below (or left/right) - the new wall has the same thickness, starts on the opposite face and is measured from it · diamonds = joint points on existing walls (both faces): start from one and the new wall copies its thickness and length · Wall line = which face/centre your line is (Tab cycles) · matching lengths snap (= same) · click the first point or type back to it to close a room (uses Draw size) · RIGHT-CLICK / Enter (empty) finishes · Backspace undoes a point · Esc cancels · Shift = force straight',multi:'Click walls/room labels to add or remove them, drag empty space to box-select, drag a selected wall to move all',origin:'Click the point that should become 0,0'};
 function status(){const w=M?s2w(M):null;$('st').textContent=(Date.now()<FLU?'⚠ '+FLM+'  |  ':'')+HINT[tool]+'  |  '+(w?'x '+LB(w[0]-S.origin[0])+'  y '+LB(w[1]-S.origin[1])+'  |  ':'')+(drag&&drag.msg?drag.msg+'  |  ':'')+'zoom '+(+(V.s*FM()).toFixed(1))+' px/'+U[S.unit].l}
 function side(){let h='';
  INFO.lands.forEach(l=>h+='<div class="it"><b>'+l.n+'</b><i>land</i><div class="r"><span>Land (outer bound)</span><b>'+ar(l.land)+'</b></div><div class="r"><span>Inside walls (clear)</span><b>'+ar(l.clear)+'</b></div></div>');
- INFO.rooms.forEach(r=>h+='<div class="it">'+(r.meta&&r.meta.color?'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:'+r.meta.color+'"></span>':'')+'<b>'+esc(r.name)+'</b><div class="r"><span>'+(r.basis==='in'?'▸ ':'')+'Area (clear)</span><b>'+ar(r.net)+'</b></div><div class="r"><span>'+(r.basis==='out'?'▸ ':'')+'Area incl. walls</span><b>'+ar(r.outNet)+'</b></div></div>');
+ INFO.rooms.forEach(r=>h+='<div class="it">'+(r.meta&&r.meta.color?'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:'+r.meta.color+'"></span>':'')+'<b>'+esc(r.name)+'</b><div class="r"><span>'+(r.basis==='in'?'▸ ':'')+'Area (clear)</span><b>'+ar(r.net)+'</b></div><div class="r"><span>'+(r.basis==='out'?'▸ ':'')+'Area incl. walls</span><b>'+ar(r.outNet)+'</b></div>'+(r.poly&&r.op&&r.ws?'<div class="r"><span>Walls: inner / outer</span></div>'+r.ws.map((w,i)=>{const n=r.poly.length,a=r.poly[i],b=r.poly[(i+1)%n],c=r.op[i],d=r.op[(i+1)%n];return'<div class="r"><span>'+(i+1)+'</span><b>'+LB(Math.hypot(b[0]-a[0],b[1]-a[1]))+' / '+LB(Math.hypot(d[0]-c[0],d[1]-c[1]))+'</b></div>'}).join(''):'')+'</div>');
  if(!h)h='<div class="em">Any closed loop of walls — even built from different boxes/walls — is measured here, using wall faces.</div>';
  h='<b>Areas</b><div style="height:8px"></div>'+h;if(h!==lastSide){lastSide=h;$('areas').innerHTML=h}}
 // ---- dialogs
@@ -311,11 +361,24 @@ function boxDlg(g){restore(c=>c.g==g);const b=gbox(g),gm=S.groups[g];if(!b||!gm|
   const d=m==='in'?2*vv.gi:m==='out'?-2*vv.go:0,o=m==='in'?vv.gi:m==='out'?-vv.go:0,L2=Ln+d,W2=Wn+d;
   if(L2>0&&W2>0&&isFinite(Xn)&&isFinite(Yn)){const sx=Lc>1e-9?L2/Lc:1,sy=Wc>1e-9?W2/Wc:1,nx=Xn+or[0]-o,ny=Yn+or[1]-o;
    if(!gm.comp)S.rooms.forEach(q=>{if(q.x>=b.x0&&q.x<=b.x1&&q.y>=b.y0&&q.y<=b.y1){q.x=nx+(q.x-b.x0)*sx;q.y=ny+(q.y-b.y0)*sy}});
+   S.doors.forEach(d=>{if(d.g!==g)return;const gg=doorGeom(d);d.c=[nx+(gg.c[0]-b.x0)*sx,ny+(gg.c[1]-b.y0)*sy];d.dx0=gm.dx||0;d.dy0=gm.dy||0});
    b.ws.forEach(w=>{w.ax=nx+(w.ax-b.x0)*sx;w.bx=nx+(w.bx-b.x0)*sx;w.ay=ny+(w.ay-b.y0)*sy;w.by=ny+(w.by-b.y0)*sy})}},'');
  const upd=()=>{const t=PL($('f_th').value)||t0,x=vals($('f_mode').value,t);$('f_L').value=FV(x.L);$('f_W').value=FV(x.W);$('f_X').value=FV(x.X);$('f_Y').value=FV(x.Y)};$('f_mode').onchange=upd;$('f_th').onchange=upd}
 function shapeDlg(g){restore(c=>c.g==g);const gm=S.groups[g],ws=S.walls.filter(w=>w.g===g);if(!ws.length)return;const t0=ws.reduce((a,w)=>a+w.fl+w.fr,0)/ws.length;
  dlg('Shape ('+ws.length+' walls)',[{id:'type',l:'Type',t:'sel',v:gm.comp?'c':'r',o:[['r','Room / house'],['c','Compound (land boundary)']]},{id:'th',l:'Wall width (all walls)',t:'text',v:FV(t0)},{id:'sep',l:'Keep walls separate (overlap, no merge)',t:'chk',v:!!gm.sep},{id:'lock',l:'Lock in place (no accidental moves)',t:'chk',v:!!gm.lock}],r=>{
   const was=gm.lock;gm.lock=r.lock;gm.comp=r.type==='c';gm.sep=r.sep;if(was&&r.lock)return;const t=PL(r.th);if(t>0&&Math.abs(t-t0)>1e-6)ws.forEach(w=>{w.fl=w.fr=t/2})})}
+function doorDlg(d){const g=doorGeom(d);if(g.host&&locked(g.host)){flash('Locked - unlock it first');return}
+ const sideLbl=s=>{const off=(s>0?g.fl:g.fr)+.4,p=[g.c[0]+g.n[0]*s*off,g.c[1]+g.n[1]*s*off],r=INFO.rooms.filter(r=>r.iA>0&&inP(p,r.poly)&&!r.hl.some(c=>inP(p,c.poly))).sort((a,b)=>a.A-b.A)[0];return r?'into '+r.name:'outward (not into a room)'};
+ dlg('Door',[{id:'w',l:'Door length (opening, top view)',t:'text',v:FV(d.w)},
+  {id:'s',l:'Opens',t:'sel',v:String(d.s),o:[['1',sideLbl(1)],['-1',sideLbl(-1)]]},
+  {id:'h',l:'Hinge (seen from the swing side)',t:'sel',v:hingeSide(d,g),o:[['L','Left'],['R','Right']]},
+  {id:'a',l:'Open angle (degrees)',t:'text',v:String(d.a)}],r=>{
+  const w=PL(r.w);if(w>0)d.w=w;d.s=+r.s;const g2=doorGeom(d),want=r.h;d.h=1;if(hingeSide(d,g2)!==want)d.h=-1;
+  const a=parseFloat(r.a);if(isFinite(a))d.a=Math.max(0,Math.min(175,a))},
+  '<button id="dd" style="width:100%;margin-top:4px">Delete this door</button>');
+ $('dd').onclick=()=>{$('ov').style.display='none';delDoor()}}
+function delDoor(){const d=S.doors.find(x=>x.id===selD);if(!d)return;push();S.doors=S.doors.filter(x=>x!==d);selD=null;commit();R()}
+const pruneDoors=()=>{S.doors=S.doors.filter(d=>doorGeom(d).host)};
 function setT(p,sg,nt,mode){const c=sg>0?'fl':'fr',o=sg>0?'fr':'fl';if(mode==='this')p[c]=Math.max(.002,nt-p[o]);else if(mode==='other')p[o]=Math.max(.002,nt-p[c]);else{const d=(nt-p.fl-p.fr)/2;p.fl=Math.max(.001,p.fl+d);p.fr=Math.max(.001,p.fr+d)}}
 function wallDlg(h){if(locked(h.w)){flash('Locked - unlock it first (double-click inside the room to unlock)');return}restore(c=>c.g==h.w.g);const w=h.w,gm=S.groups[w.g],b=gm&&gm.kind==='box'?gbox(w.g):null;let inner=null;if(b)inner=(h.sg>0)===(faceIO(w,b).li===1);
  const L0=Math.hypot(w.bx-w.ax,w.by-w.ay);
@@ -338,7 +401,7 @@ function applyBox(){if(!BD)return;const w=PL($('ipw').value),h=PL($('iph').value
 function applyWall(){if(!draft)return;const te=$('ipt');if(te&&te.dataset.d==='1'){const t=PL(te.value);if(t>0)draft.tk=t;te.dataset.d=''}
  const v=$('ipl').value.trim(),len=PL(v);if(!(len>0)){flash('Type a length such as 5\' or 5\' 6" or 1.5');R();return}draft.ty=v;$('ipl').dataset.d='';typedWall();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur()}
 const BOXP='<b id="ipn">Box size</b><label>Width (horizontal) <input id="ipw" type="text"></label><label>Length (vertical) <input id="iph" type="text"></label><button id="ipa" class="pri">Apply</button><button id="ipf">Finish</button><button id="ipc">Cancel</button><span class="em">optional - or right-click / Enter = finish</span>',
- WALLP='<b>Wall</b><label>Length <input id="ipl" type="text"></label><label>Thickness <input id="ipt" type="text"></label><button id="ipa" class="pri">Add point</button><button id="ipf">Finish</button><button id="ipc">Cancel</button><span class="em">optional - or right-click / Enter = finish</span>';
+ WALLP='<b>Wall</b><label>Length <input id="ipl" type="text"></label><label>Thickness <input id="ipt" type="text"></label><button id="ipa" class="pri">Add point</button><button id="ipf">Finish</button><button id="ipc">Cancel</button><span class="em" id="ipi">optional - or right-click / Enter = finish</span>';
 function syncPanel(){const ip=$('ip'),bx=BDv();let m=null;
  if((tool==='box'||tool==='comp')&&bx&&bx.b)m='box';else if(tool==='wall'&&draft)m='wall';
  if(!m){if(ip.style.display!=='none')ip.style.display='none';ip.dataset.m='';return}
@@ -347,8 +410,8 @@ function syncPanel(){const ip=$('ip'),bx=BDv();let m=null;
   $('ipa').onclick=()=>m==='box'?applyBox():applyWall();$('ipf').onclick=()=>m==='box'?finishBox():finishWall(false);$('ipc').onclick=()=>{BD=null;draft=null;drag=null;GP=[];R()}}
  ip.style.display='flex';const set=(id,v)=>{const el=$(id);if(el&&document.activeElement!==el&&el.dataset.d!=='1')el.value=v};
  if(m==='box'){$('ipn').textContent=bx.c?'Compound size':'Box size';set('ipw',FV(Math.abs(bx.b[0]-bx.a[0])));set('iph',FV(Math.abs(bx.b[1]-bx.a[1])))}
- else{const l=draft.pts[draft.pts.length-1],h=hover?hover[0]:l;set('ipl',FV(Math.hypot(h[0]-l[0],h[1]-l[1])));set('ipt',FV(draft.tk||S.tw))}}
-function setTool(t){tool=t;draft=null;drag=null;BD=null;hover=null;GP=[];$('wlw').style.display=t==='wall'?'':'none';document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));R()}
+ else{const l=draft.pts[draft.pts.length-1],h=hover?hover[0]:l;set('ipl',FV(Math.hypot(h[0]-l[0],h[1]-l[1])));set('ipt',FV(draft.tk||S.tw));const pp=draft.pts.concat(hover?[hover[0]]:[]),tk2=draft.tk||S.tw,ll=pp.length>1?Math.hypot(pp[pp.length-1][0]-pp[pp.length-2][0],pp[pp.length-1][1]-pp[pp.length-2][1]):0;$('ipi').textContent=ll>1e-6?'this wall: outer '+LB(ll)+' · inner '+(ll-2*tk2>1e-6?LB(ll-2*tk2):'-'):'optional - or right-click / Enter = finish'}}
+function setTool(t){tool=t;draft=null;drag=null;BD=null;hover=null;GP=[];$('wlw').style.display=t==='wall'?'':'none';$('dww').style.display=t==='door'?'':'none';DH=null;document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));R()}
 function offChain(p,o){const n=p.length,L=[];for(let i=0;i<n-1;i++){let dx=p[i+1][0]-p[i][0],dy=p[i+1][1]-p[i][1];const l=Math.hypot(dx,dy)||1e-9;dx/=l;dy/=l;L.push({p:[p[i][0]-dy*o[i],p[i][1]+dx*o[i]],d:[dx,dy],l})}
  return p.map((_,j)=>{if(j===0)return L[0].p;if(j===n-1){const A=L[n-2];return[A.p[0]+A.d[0]*A.l,A.p[1]+A.d[1]*A.l]}const A=L[j-1],B=L[j],c=crs(A.d,B.d);if(Math.abs(c)<1e-9)return B.p;const s=crs([B.p[0]-A.p[0],B.p[1]-A.p[1]],B.d)/c;return[A.p[0]+A.d[0]*s,A.p[1]+A.d[1]*s]})}
 function refToCenter(p,closed,th){const m=S.bm,h=(th||S.tw)/2;if(m==='ctr'||p.length<2)return p;
@@ -368,6 +431,22 @@ function centreChain(p,mode,tk){if(p.length<2||!mode||mode==='ctr')return p;cons
 function tuck(c,d,H){const hx=H.bx-H.ax,hy=H.by-H.ay,hl=Math.hypot(hx,hy);if(hl<1e-9)return c;const den=d[0]*hy-d[1]*hx;if(Math.abs(den)<1e-6*hl)return c;
  const s=((c[0]-H.ax)*hy-(c[1]-H.ay)*hx)/den;if(s<-1e-9||s>H.tk*2+1e-6)return c;
  const px=c[0]-d[0]*s,py=c[1]-d[1]*s,u=((px-H.ax)*hx+(py-H.ay)*hy)/(hl*hl);if(u<-1e-6||u>1+1e-6)return c;return[px,py]}
+// possible inner / outer face lengths of the wall being drawn (corners shorten the inner face and lengthen the outer face)
+function draftFaces(ref,tk){const cc=centreChain(ref,draft.cell?'ctr':S.wl,tk),n=cc.length;if(n<2||n!==ref.length)return null;
+ const U=i=>{const dx=cc[i+1][0]-cc[i][0],dy=cc[i+1][1]-cc[i][1],l=Math.hypot(dx,dy)||1;return[dx/l,dy/l,l]},sg=[];for(let i=0;i<n-1;i++)sg.push(U(i));
+ const closed=n>=4&&Math.hypot(cc[n-1][0]-cc[0][0],cc[n-1][1]-cc[0][1])<1e-6,R=sg.map(q=>q[2]),Lf=sg.map(q=>q[2]);
+ const corner=(a,b)=>{const cr=a[0]*b[1]-a[1]*b[0],dt=Math.max(-1,Math.min(1,a[0]*b[0]+a[1]*b[1])),e=Math.min(tk*3,(tk/2)*Math.tan(Math.acos(dt)/2));return{e,sg:cr>=0?1:-1}};
+ const addC=(i,c)=>{R[i]+=c.sg*c.e;Lf[i]-=c.sg*c.e};
+ for(let v=1;v<n-1;v++){const c=corner(sg[v-1],sg[v]);addC(v-1,c);addC(v,c)}
+ if(closed){const c=corner(sg[n-2],sg[0]);addC(n-2,c);addC(0,c)}
+ else[0,n-1].forEach(v=>{const p=cc[v],u=v?[-sg[n-2][0],-sg[n-2][1]]:[sg[0][0],sg[0][1]],i=v?n-2:0;
+  for(const H of S.walls){const hx=H.bx-H.ax,hy=H.by-H.ay,hl=Math.hypot(hx,hy);if(hl<1e-9)continue;const t=Math.max(0,Math.min(1,((p[0]-H.ax)*hx+(p[1]-H.ay)*hy)/(hl*hl))),qx=H.ax+hx*t,qy=H.ay+hy*t;
+   if(Math.hypot(p[0]-qx,p[1]-qy)>H.tk/2+tk/2+1e-6)continue;const cs=Math.abs(u[0]*hy-u[1]*hx)/hl;if(cs<.2)continue;
+   const nearA=Math.hypot(qx-H.ax,qy-H.ay)<H.tk+1e-6,nearB=Math.hypot(qx-H.bx,qy-H.by)<H.tk+1e-6;
+   if(nearA||nearB){const hd=nearA?[hx/hl,hy/hl]:[-hx/hl,-hy/hl],cr=u[0]*hd[1]-u[1]*hd[0],ph=Math.acos(Math.max(-1,Math.min(1,u[0]*hd[0]+u[1]*hd[1]))),e=Math.min(tk*3,(tk/2)/Math.tan(ph/2||1e-6)),sd=cr>=0?-1:1;R[i]+=sd*e;Lf[i]-=sd*e}
+   else{const e=H.tk/2/cs;R[i]-=e;Lf[i]-=e}
+   break}});
+ return sg.map((q,i)=>({out:Math.max(R[i],Lf[i]),inn:Math.min(R[i],Lf[i])}))}
 function addLen(a,b){const l=Math.hypot(b[0]-a[0],b[1]-a[1]);if(l>1e-6&&!draft.ls.some(q=>Math.abs(q-l)<1e-6))draft.ls.push(l)}
 function typedWall(){const d0=draft;if(d0.cell&&d0.pts.length===1){d0.cs=d0.cs||1;d0.pts[0]=cellStart(d0.cell,d0.cs)}const l=d0.pts[d0.pts.length-1],len=PL(d0.ty);
  if(!(len>0)){flash('Type a length such as 5\' or 5\' 6" or 1.5 then press Enter');return}
@@ -424,6 +503,9 @@ cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);['ipw','
  if(tool==='select'||tool==='multi'){
   const add=e.ctrlKey||e.metaKey||tool==='multi',sw_=selW(),lh=labHit(m);
   if(dbl&&lh){drag=null;roomDlg(lh);R();return}
+  const dh=tool==='select'?hitDoor(w):null;
+  if(dh){selD=dh.id;sel=null;MS=new Set();if(dbl){drag=null;doorDlg(dh);R();return}const gg=doorGeom(dh);if(gg.host&&locked(gg.host)){drag=null;flash('Locked - unlock it first');R();return}drag={t:'door',d:dh,mv:0};R();return}
+  if(!add)selD=null;
   if(!dbl&&!add&&!lh&&sw_&&MS.size<2){const b=gbox(sw_.g);
    for(const x of b.ws)for(const q of[[x.ax,x.ay],[x.bx,x.by]]){const k=key(...q);if(Math.hypot(w[0]-q[0],w[1]-q[1])<10/V.s){if(locked(sw_)){flash('Locked - unlock it first');return}const um=restore(c=>c.g==sw_.g);drag={t:'node',k,ws:S.walls.filter(y=>y.g===sw_.g),mv:0,unm:um};R();return}}
    const h2=hitW(w);if(h2&&h2.w===sw_&&(sw_.fl+sw_.fr)*V.s>14&&h2.t>=0&&h2.t<=h2.l){const df=Math.abs(h2.d-sw_.fl),dr=Math.abs(h2.d+sw_.fr);if(Math.min(df,dr)<6/V.s){if(locked(sw_)){flash('Locked - unlock it first');return}drag={t:'face',w:sw_,sg:df<dr?1:-1,mv:0};R();return}}}
@@ -439,6 +521,7 @@ cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);['ipw','
    else{if(!MS.has(g)||MS.size<2)MS=new Set([g]);startMove(mvW,w,null)}}
   else if(tool==='multi'||e.shiftKey)drag={t:'marq',a:w,b:w,add:tool==='multi'||e.ctrlKey||e.metaKey};
   else{sel=null;MS=new Set();drag={t:'pan',m}}}
+ else if(tool==='door'){const dh=hitDoor(w);if(dh){selD=dh.id;doorDlg(dh);return}const h=hitW(w);if(!h){flash('Click on a wall to place a door');return}if(locked(h.w)){flash('Locked - unlock it first');return}push();const d=newDoor(h);S.doors.push(d);selD=d.id;commit();R()}
  else if(tool==='wall'){
   const r=wallPt(w,draft?draft.pts[draft.pts.length-1]:null,e.shiftKey),sp=r[0];
   if(!draft)draft={pts:[sp],sn:r[1]===1||r[1]===2,jh:[r[2]?r[2].h:null],tk:r[2]?r[2].tk:0,ls:r[2]?[r[2].len]:[],ty:'',cell:r[2]&&r[2].n?r[2]:null};else{const q=w2s(draft.pts[0]);if(draft.pts.length>=3&&Math.hypot(m[0]-q[0],m[1]-q[1])<12){finishWall(true);return}
@@ -446,9 +529,13 @@ cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);['ipw','
  else{const sp=snapPt(w,()=>false)[0];if(!BD)BD={t:'box',a:sp,b:sp.slice(),c:tool==='comp',fresh:true,follow:false};else{BD.b=sp;BD.follow=false;BD.fresh=false}drag=BD;boxGaps(BD)}
  R()});
 cv.addEventListener('pointermove',e=>{const m=[e.offsetX,e.offsetY],w=s2w(m);M=m;
- if(tool!=='select'&&tool!=='origin'&&tool!=='multi'){hover=tool==='wall'?wallPt(w,draft?draft.pts[draft.pts.length-1]:null,e.shiftKey):snapPt(w,()=>false)}else hover=null;
+ DH=null;if(tool==='door'){const h=hitW(w);if(h){DH=newDoor(h);S.did--}}
+ if(tool!=='select'&&tool!=='origin'&&tool!=='multi'&&tool!=='door'){hover=tool==='wall'?wallPt(w,draft?draft.pts[draft.pts.length-1]:null,e.shiftKey):snapPt(w,()=>false)}else hover=null;
  if(drag){
   if(drag.t==='pan'){V.ox+=m[0]-drag.m[0];V.oy+=m[1]-drag.m[1];drag.m=m}
+  else if(drag.t==='door'){const g=doorGeom(drag.d),H=g.host;if(H){const L=Math.hypot(H.bx-H.ax,H.by-H.ay),ux=(H.bx-H.ax)/L,uy=(H.by-H.ay)/L,half=Math.min(drag.d.w/2,L/2),fl=10/V.s;let t=(w[0]-H.ax)*ux+(w[1]-H.ay)*uy;t=Math.max(half,Math.min(L-half,t));
+    if(Math.abs(t-L/2)<fl)t=L/2;else if(t-half<fl)t=half;else if(L-half-t<fl)t=L-half;
+    if(!drag.mv){push();drag.mv=1}const gm=S.groups[H.g]||{};drag.d.c=[H.ax+ux*t,H.ay+uy*t];drag.d.g=H.g;drag.d.dx0=gm.dx||0;drag.d.dy0=gm.dy||0}}
   else if(drag.t==='marq')drag.b=w;
   else if(drag.t==='node'){if(!drag.mv){push();drag.mv=1}const ex=x=>drag.ws.includes(x),sp=snapPt(w,ex,true)[0];drag.ws.forEach(x=>{if(key(x.ax,x.ay)===drag.k){x.ax=sp[0];x.ay=sp[1]}else if(key(x.bx,x.by)===drag.k){x.bx=sp[0];x.by=sp[1]}});drag.k=key(...sp);GP=gaps(wbox(drag.ws),ex)}
   else if(drag.t==='move'){const d=[w[0]-drag.st[0],w[1]-drag.st[1]];if(!drag.mv){if(Math.hypot(...d)*V.s<3)return;push();drag.mv=1;const mg=new Set([...new Set(drag.ws.map(x=>x.g))].filter(g=>S.walls.filter(x=>x.g===g).every(x=>drag.ws.includes(x))));drag.gd=[...mg].map(g=>S.groups[g]).filter(Boolean).map(gm=>[gm,gm.dx||0,gm.dy||0]);drag.ro=S.rooms.filter(r=>INFO.rooms.some(F=>F.meta===r&&F.ws.every(x=>mg.has(x.g)||(x.sh&&x.sh.some(c=>mg.has(c.g)))))).map(r=>[r,r.x,r.y])}
@@ -464,6 +551,7 @@ cv.addEventListener('pointerup',()=>{
  if(drag&&drag.t==='box'){if(drag.fresh){if(Math.hypot(drag.b[0]-drag.a[0],drag.b[1]-drag.a[1])*V.s<4)drag.follow=true;drag.fresh=false}}
  else if(drag&&drag.t==='marq'){const a=drag.a,b=drag.b,x0=Math.min(a[0],b[0]),x1=Math.max(a[0],b[0]),y0=Math.min(a[1],b[1]),y1=Math.max(a[1],b[1]);
   if(!drag.add)MS=new Set();S.walls.forEach(x=>{const q=qbox(x);if(q[0]<=x1&&q[2]>=x0&&q[1]<=y1&&q[3]>=y0)MS.add(x.g)});sel=null}
+ else if(drag&&drag.t==='door'){if(drag.mv)commit()}
  else if(drag&&drag.mv)commit();
  else if(drag&&drag.t==='move'&&drag.tog!=null){MS.delete(drag.tog);sel=null}
  drag=null;GP=[];R()});
@@ -471,7 +559,7 @@ function zoom(f,x,y){const wx=(x-V.ox)/V.s,wy=(y-V.oy)/V.s;V.s=Math.max(1,Math.m
 cv.addEventListener('wheel',e=>{e.preventDefault();zoom(Math.exp(-e.deltaY*.0015),e.offsetX,e.offsetY)},{passive:false});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 function fit(){const w=cv.clientWidth,h=cv.clientHeight,m=34;V.s=Math.max(1,Math.min((w-m-RL)/S.sheet[0],(h-m-RL)/S.sheet[1]));V.ox=RL+(w-RL-S.sheet[0]*V.s)/2;V.oy=RL+(h-RL-S.sheet[1]*V.s)/2;R()}
-function delW(grp){const w=selW();if(!w&&!(grp&&MS.size))return;const gs=grp?(MS.size?MS:new Set([w.g])):null,hit=x=>grp?gs.has(x.g):x===w;
+function delW0(grp){const w=selW();if(!w&&!(grp&&MS.size))return;const gs=grp?(MS.size?MS:new Set([w.g])):null,hit=x=>grp?gs.has(x.g):x===w;
  if(S.walls.some(x=>hit(x)&&locked(x))){flash('Locked - unlock it before deleting');if(S.walls.every(x=>!hit(x)||locked(x)))return}
  push();S.walls=S.walls.filter(x=>!hit(x)||locked(x));if(grp)MS=new Set();sel=null;commit();R()}
 function joinWalls(){const w0=selW();if(!w0){flash('Select a wall first, then press Join walls');return}
@@ -504,7 +592,8 @@ $('mvp').innerHTML='<div class="it" id="mvbox" style="display:none"><b>Move by p
 $('anc').onclick=e=>{const b=e.target.closest('button');if(!b)return;const i=+b.dataset.i;ANC=[(i%3)/2,Math.floor(i/3)/2];R()};
 $('mm').onchange=e=>{MM=e.target.value;R()};$('mgo').onclick=applyMv;
 [$('mx'),$('my')].forEach(el=>el.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();applyMv()}});
-function doUndo(){if(!undo.length)return;const s=JSON.parse(undo.pop());S.walls=s.w;S.groups=s.g;S.origin=s.o;S.rooms=s.r||[];MS=new Set();draft=null;commit();R()}
+function delW(grp){delW0(grp);pruneDoors();R()}
+function doUndo(){if(!undo.length)return;const s=JSON.parse(undo.pop());S.walls=s.w;S.groups=s.g;S.origin=s.o;S.rooms=s.r||[];S.doors=s.d||[];selD=null;MS=new Set();draft=null;commit();R()}
 window.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
  if(tool==='wall'&&draft&&!e.ctrlKey&&!e.metaKey&&!e.altKey){
   if(e.key.length===1&&/[0-9.'"\u2032\u2033\u2019\u201d\sftinm-]/i.test(e.key)&&!(e.key===' '&&!draft.ty)){e.preventDefault();draft.ty+=e.key;R();return}
@@ -512,12 +601,12 @@ window.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.t
   if(e.key==='Enter'&&draft.ty){e.preventDefault();typedWall();return}}
  if((tool==='box'||tool==='comp')&&BD&&e.key==='Tab'){e.preventDefault();const f=$('ipw');if(f){f.focus();f.select()}return}
  if(tool==='wall'&&e.key==='Tab'){e.preventDefault();cycleWL();return}
- if(e.key===' '){space=true;e.preventDefault()}else if(e.key==='Delete')delW(e.shiftKey);
+ if(e.key===' '){space=true;e.preventDefault()}else if(e.key==='Delete'){if(selD!=null)delDoor();else delW(e.shiftKey)}
  else if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo()}
  else if(e.key==='Escape'){draft=null;drag=null;setTool('select')}else if(e.key==='Enter'&&draft)finishWall(false);else if(e.key==='Enter'&&BD&&(tool==='box'||tool==='comp'))finishBox();
  else if(e.key==='Backspace'&&draft){draft.pts.pop();draft.jh.pop();if(!draft.pts.length)draft=null;R()}});
 window.addEventListener('keyup',e=>{if(e.key===' ')space=false});
-function sync(){$('wl').value=S.wl||'ctr';updWL();$('lm').value=S.lm||'out';$('bm').value=S.bm||'in';$('sp').checked=!!S.sepNew;$('un').value=S.unit;$('tw').value=FV(S.tw);$('sw').value=FV(S.sheet[0]);$('sh').value=FV(S.sheet[1])}
+function sync(){$('dw').value=FV(S.dw||.9144);$('wl').value=S.wl||'ctr';updWL();$('lm').value=S.lm||'out';$('bm').value=S.bm||'in';$('sp').checked=!!S.sepNew;$('un').value=S.unit;$('tw').value=FV(S.tw);$('sw').value=FV(S.sheet[0]);$('sh').value=FV(S.sheet[1])}
 document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
 $('un').onchange=e=>{S.unit=e.target.value;sync();commit();R()};
 $('tw').onchange=e=>{const v=PL(e.target.value);if(v>0)S.tw=v;sync();commit()};
@@ -536,7 +625,7 @@ function separateRooms(only){push();if(only)restore(c=>only.has(c.g));
  S.walls=rest.concat(nw);commit();MS=only?new Set(ng):new Set();sel=null;R()}
 $('sa').onclick=()=>{if($('so').checked){const gs=selGroups();if(!gs.size){flash('Select the rooms first (or untick "Selected rooms only")');return}separateRooms(gs)}else separateRooms(null)};
 $('lk').onclick=()=>{const gs=[...selGroups()].filter(g=>S.groups[g]);if(!gs.length){flash('Select a room first, then press Lock / Unlock');return}const all=gs.every(g=>S.groups[g].lock);push();gs.forEach(g=>S.groups[g].lock=!all);commit();R();flash(all?'Unlocked '+gs.length+' selected':'Locked '+gs.length+' selected - they cannot be moved')};
-$('wl').onchange=e=>{S.wl=e.target.value;commit();R()};$('lm').onchange=e=>{S.lm=e.target.value;commit();R()};$('bm').onchange=e=>{S.bm=e.target.value;commit()};
+$('dw').onchange=e=>{const v=PL(e.target.value);if(v>0)S.dw=v;sync();commit()};$('wl').onchange=e=>{S.wl=e.target.value;commit();R()};$('lm').onchange=e=>{S.lm=e.target.value;commit();R()};$('bm').onchange=e=>{S.bm=e.target.value;commit()};
 $('sn').onchange=$('dm').onchange=R;$('sp').onchange=e=>{S.sepNew=e.target.checked;commit()};
 $('zi').onclick=()=>zoom(1.25,cv.clientWidth/2,cv.clientHeight/2);$('zo').onclick=()=>zoom(.8,cv.clientWidth/2,cv.clientHeight/2);
 $('fit').onclick=fit;$('ud').onclick=doUndo;$('dl').onclick=()=>delW(false);$('dg').onclick=()=>delW(true);
