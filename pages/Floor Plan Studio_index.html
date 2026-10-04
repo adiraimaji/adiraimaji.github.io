@@ -1,50 +1,107 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Floor Plan Studio</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-:root{--bg:#eeece4;--pn:#fff;--tx:#1d1d1b;--mu:#6b6a63;--bd:#d0cdc0;--ac:#0f6e56;--cv:#fbfaf6;--gr:#ebe8dd;--gm:#d6d2c3;--wl:#3a3a36;--cp:#8a5a1e;--sel:#d4541a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root{--bg:#eeece4;--pn:#fff;--tx:#1d1d1b;--mu:#6b6a63;--bd:#d0cdc0;--ac:#0f6e56;--cv:#fbfaf6;--gr:#ebe8dd;--gm:#d6d2c3;--wl:#3a3a36;--cp:#8a5a1e;--sel:#d4541a;
+ --c0:#1e1e1e;--c1:#2a2a2a;--c2:#333;--c3:#3d3d3d;--cl:#474747;--ct:#dcdcdc;--cm:#9a9a9a;--ca:#3b82f6;--ca2:#2563eb;--cd:#ef5350;
+ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1a18;--pn:#26261f;--tx:#ece9df;--mu:#9a978a;--bd:#3b3a33;--ac:#5dcaa5;--cv:#202019;--gr:#2b2b24;--gm:#3a3a31;--wl:#cfcabb;--cp:#d9a35a;--sel:#ff8a50}}
 :root[data-theme="dark"]{--bg:#1a1a18;--pn:#26261f;--tx:#ece9df;--mu:#9a978a;--bd:#3b3a33;--ac:#5dcaa5;--cv:#202019;--gr:#2b2b24;--gm:#3a3a31;--wl:#cfcabb;--cp:#d9a35a;--sel:#ff8a50}
 html,body{height:100%;margin:0}
-body{background:var(--bg);color:var(--tx);font:13px system-ui,-apple-system,Segoe UI,sans-serif;display:flex;flex-direction:column;overflow:hidden}
-#tb{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:8px 10px;background:var(--pn);border-bottom:1px solid var(--bd)}
-#tb label{display:flex;align-items:center;gap:4px;color:var(--mu)}
-.g{display:flex}.g button{border-radius:0}.g button:first-child{border-radius:6px 0 0 6px}.g button:last-child{border-radius:0 6px 6px 0}
-button,select,input{font:inherit;color:var(--tx);background:var(--pn);border:1px solid var(--bd);border-radius:6px;padding:5px 9px}
-button{cursor:pointer}button.on,button.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
-#tb input[type=text]{width:72px}input[type=checkbox]{width:auto}
-#main{flex:1;min-height:0;display:flex}#cw{flex:1;position:relative;min-width:0}
+body{background:var(--c0);color:var(--ct);font:12.5px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
+/* controls (all chrome is dark, like a pro design tool) */
+button,select,input{font:inherit;color:var(--ct);background:var(--c0);border:1px solid var(--c3);border-radius:4px;padding:4px 8px;outline:none}
+input:focus,select:focus{border-color:var(--ca)}
+button{cursor:pointer;background:var(--c2)}button:hover{background:var(--c3)}
+button.pri{background:var(--ca);border-color:var(--ca);color:#fff}button.pri:hover{background:var(--ca2)}
+input[type=checkbox]{width:14px;height:14px;padding:0;accent-color:var(--ca)}
+input[type=text]{width:78px}
+label{display:flex;align-items:center;gap:6px;color:var(--cm);white-space:nowrap}
+/* application bar */
+#top{display:flex;align-items:center;gap:14px;height:44px;padding:0 12px;background:var(--c1);border-bottom:1px solid #111;flex:none}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;color:#fff;letter-spacing:.2px;padding-right:6px}
+.brand svg{color:var(--ca)}
+.grp{display:flex;align-items:center;gap:6px}.sp{flex:1}
+.seg{display:flex}.seg button{border-radius:0;margin-left:-1px;min-width:30px}.seg button:first-child{border-radius:4px 0 0 4px;margin:0}.seg button:last-child{border-radius:0 4px 4px 0}
+.vr{width:1px;height:22px;background:var(--c3)}
+/* options bar: settings of the active tool */
+#ob{display:flex;align-items:center;gap:14px;min-height:36px;padding:3px 12px;background:var(--c2);border-bottom:1px solid #111;flex:none;flex-wrap:wrap}
+#tn{font-weight:600;color:#fff;background:var(--c0);border:1px solid var(--c3);border-radius:4px;padding:3px 10px;min-width:70px;text-align:center}
+.o-draw{display:flex;align-items:center;gap:14px}
+/* tool palette (left) */
+#main{flex:1;min-height:0;display:flex}
+#pal{width:112px;flex:none;background:var(--c1);border-right:1px solid #111;overflow-y:auto;overflow-x:hidden;padding:6px 6px 10px;display:grid;grid-template-columns:1fr 1fr;align-content:start;gap:3px}
+#pal h6{grid-column:1/-1;margin:10px 0 2px;font-size:9px;font-weight:600;letter-spacing:1.2px;color:var(--cm);text-align:center;text-transform:uppercase}
+#pal h6:first-child{margin-top:2px}
+.pt{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%;padding:6px 0 4px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--ct);font-size:9.5px;line-height:1.1;text-align:center}
+.pt svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pt:hover{background:var(--c3)}
+.pt.on{background:var(--ca);color:#fff;border-color:var(--ca)}
+.pt.danger:hover{background:#5a2a2a;color:#ffb4b0}
+.pt kbd{font:inherit;font-size:8.5px;color:var(--cm);opacity:.9}.pt.on kbd{color:#dbe7ff}
+.pck{grid-column:1/-1;display:flex;flex-direction:row;gap:4px;justify-content:center;align-items:center;margin-top:3px;font-size:9px;line-height:1.1;text-align:left;padding:2px 4px;color:var(--cm);white-space:normal}
+/* canvas */
+#cw{flex:1;position:relative;min-width:0}
 canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
-#side{width:260px;overflow:auto;background:var(--pn);border-left:1px solid var(--bd);padding:10px}
-.it{border:1px solid var(--bd);border-radius:8px;padding:8px;margin-bottom:8px}
-.it i{color:var(--mu);font-style:normal;font-size:11px;margin-left:4px}
-.r{display:flex;justify-content:space-between;gap:8px;margin-top:3px;color:var(--mu)}.r b{color:var(--tx)}.em{color:var(--mu)}
-#st{padding:5px 10px;background:var(--pn);border-top:1px solid var(--bd);color:var(--mu);font-size:12px}
-#ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);align-items:center;justify-content:center;z-index:9}
-#db{background:var(--pn);border:1px solid var(--bd);border-radius:12px;padding:16px;width:min(360px,92vw);max-height:90vh;overflow:auto}
-#db h3{margin:0 0 10px;font-size:15px}#db label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
-#db label input[type=text],#db label select{width:180px}.bt{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
-#anc{display:grid;grid-template-columns:repeat(3,24px);gap:3px}#anc button{width:24px;height:24px;padding:0;font-size:10px}#mvp label{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;color:var(--mu)}#mvp input[type=text]{width:96px}#mvp select{width:112px}
-#ip{display:none;position:absolute;left:50%;transform:translateX(-50%);bottom:12px;max-width:96%;flex-wrap:wrap;gap:6px 10px;align-items:center;background:var(--pn);border:1px solid var(--bd);border-radius:10px;padding:8px 12px;box-shadow:0 2px 12px rgba(0,0,0,.2);z-index:5}#ip label{display:flex;align-items:center;gap:5px;color:var(--mu)}#ip input{width:92px}#ip b{color:var(--tx)}
-@media(max-width:720px){#main{flex-direction:column}#side{width:auto;height:30%;border-left:0;border-top:1px solid var(--bd)}}
+/* right panels */
+#side{width:276px;flex:none;overflow:auto;background:var(--c1);border-left:1px solid #111;padding:0}
+#side .it{border:0;border-bottom:1px solid #111;border-radius:0;padding:10px 12px;margin:0;background:transparent}
+#side .it>b:first-child{display:inline-block;color:#fff;font-size:11px;letter-spacing:.8px;text-transform:uppercase}
+.it i{color:var(--cm);font-style:normal;font-size:11px;margin-left:6px}
+.r{display:flex;justify-content:space-between;gap:8px;margin-top:4px;color:var(--cm)}.r b{color:var(--ct)}.em{color:var(--cm)}
+#areas{padding:2px 0}
+#areas>b{display:block;padding:10px 12px 0;color:#fff;font-size:11px;letter-spacing:.8px;text-transform:uppercase}
+#areas>.em,#areas>.r{padding:0 12px}
+#areas .it{background:rgba(255,255,255,.025)}
+#anc{display:grid;grid-template-columns:repeat(3,24px);gap:3px}#anc button{width:24px;height:24px;padding:0;font-size:10px}#anc button.on{background:var(--ca);border-color:var(--ca);color:#fff}
+#mvp label{justify-content:space-between;margin-bottom:6px}#mvp input[type=text]{width:100px}#mvp select{width:116px}
+/* status bar */
+#st{padding:4px 12px;background:var(--c1);border-top:1px solid #111;color:var(--cm);font-size:11.5px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* floating typed-size panel */
+#ip{display:none;position:absolute;left:50%;transform:translateX(-50%);bottom:12px;max-width:96%;flex-wrap:wrap;gap:6px 10px;align-items:center;background:var(--c1);color:var(--ct);border:1px solid var(--c3);border-radius:8px;padding:8px 12px;box-shadow:0 6px 24px rgba(0,0,0,.45);z-index:5}#ip label{gap:5px}#ip input{width:92px}#ip b{color:#fff}
+/* dialogs */
+#ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);align-items:center;justify-content:center;z-index:9}
+#db{background:var(--c1);color:var(--ct);border:1px solid var(--c3);border-radius:10px;padding:16px 18px;width:min(380px,92vw);max-height:90vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+#db h3{margin:0 0 12px;font-size:14px;color:#fff;font-weight:600}#db label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:9px}
+#db label input[type=text],#db label select{width:190px}.bt{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+#db .em{color:var(--cm)}
+@media(max-width:760px){#main{flex-direction:column}#pal{width:auto;height:66px;display:flex;flex-direction:row;overflow-x:auto;overflow-y:hidden;border-right:0;border-bottom:1px solid #111;padding:4px;gap:2px;align-items:stretch}#pal h6{display:none}.pt{width:56px;flex:none}#side{width:auto;height:32%;border-left:0;border-top:1px solid #111}#top{flex-wrap:wrap;height:auto;padding:6px 10px}}
 </style></head><body>
-<div id="tb">
-<div class="g"><button data-t="select" class="on">Select</button><button data-t="multi">Multi</button><button data-t="box">Box</button><button data-t="comp">Compound</button><button data-t="wall">Wall</button><button data-t="door" title="Click on a wall to place a door. Double-click a door (Select tool) to set its length, swing side, hinge and open angle">Door</button><button data-t="origin">Set 0,0</button></div>
-<label>Unit <select id="un"><option value="ftin">Feet + inches</option><option value="ft">Decimal feet</option><option value="m">Meters</option></select></label>
-<label>Wall width <input id="tw" type="text"></label>
-<label title="What the size you draw refers to: Inner = clear room size, Outer = size including walls, Centre = wall centre line">Draw size = <select id="bm"><option value="in">Inner face</option><option value="out">Outer face</option><option value="ctr">Centre line</option></select></label>
-<label id="dww" style="display:none" title="Opening length of the next door (its width seen from above)">Door width <input id="dw" type="text"></label>
+<header id="top">
+<div class="brand"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 21V3h18v18z"/><path d="M3 12h7M14 12h7M12 3v6M12 15v6"/></svg>Floor Plan Studio</div>
+<div class="grp"><label>Unit <select id="un"><option value="ftin">Feet + inches</option><option value="ft">Decimal feet</option><option value="m">Meters</option></select></label></div>
+<div class="grp"><label>Canvas <input id="sw" type="text" style="width:64px"> × <input id="sh" type="text" style="width:64px"></label></div>
+<div class="vr"></div>
+<div class="grp seg"><button id="zo" title="Zoom out">−</button><button id="fit" title="Fit the canvas in the window">Fit</button><button id="zi" title="Zoom in">+</button></div>
+<button id="ud" title="Undo (Ctrl+Z)">↶ Undo</button>
+<div class="sp"></div>
+<button id="pdf" class="pri" title="Export the drawing as a PDF">Export PDF</button>
+</header>
+<div id="ob">
+<span id="tn">Select</span>
+<span class="o-draw" style="display:none"><label>Wall width <input id="tw" type="text"></label>
+<label title="What the size you draw refers to: Inner = clear room size, Outer = size including walls, Centre = wall centre line">Draw size = <select id="bm"><option value="in">Inner face</option><option value="out">Outer face</option><option value="ctr">Centre line</option></select></label></span>
 <label id="wlw" style="display:none" title="Which part of the wall the line you draw / type is. Top or Bottom for horizontal walls, Left or Right for vertical walls. Tab = cycle. (Closed rooms use 'Draw size' instead.)">Wall line = <select id="wl"><option value="tl"></option><option value="ctr"></option><option value="br"></option></select></label>
-<label><input type="checkbox" id="sn" checked>Snap</label><label title="New boxes/walls overlap other walls instead of merging with them"><input type="checkbox" id="sp">Keep new walls separate</label><label><input type="checkbox" id="dm" checked>Lengths</label><label title="Which line the wall length labels measure along">of <select id="lm"><option value="out">Outer face</option><option value="ctr">Centre line</option><option value="in">Inner face</option><option value="both">Outer + Inner (both)</option></select></label>
-<label>Canvas <input id="sw" type="text"> × <input id="sh" type="text"></label>
-<div class="g"><button id="zo">−</button><button id="fit">Fit</button><button id="zi">+</button></div>
-<div class="g"><button id="ud">Undo</button><button id="dl">Del wall</button><button id="dg">Del group</button></div>
-<div class="g"><button id="mg" title="Walls shared by touching rooms become ONE single wall that belongs to no room (it can be moved or deleted on its own)">Split intersecting walls</button><button id="sa" title="Turn every closed area into its own independent room with its own closed walls, so each one can be moved separately">Separate all rooms</button></div>
-<label title="Tick: Split / Separate only affect the rooms you have selected. Untick: they affect the whole drawing"><input type="checkbox" id="so">Selected rooms only</label>
-<div class="g"><button id="jn" title="Select one wall piece, then join it with the pieces on the same straight line (e.g. a wall cut by touching rooms) into ONE single wall">Join walls</button></div>
-<div class="g"><button id="lk" title="Lock the selected rooms in place so they cannot be moved or deleted by accident (press again to unlock)">Lock / Unlock</button></div>
-<button id="pdf" class="pri">Export PDF</button>
+<label id="dww" style="display:none" title="Opening length of the next door (its width seen from above)">Door width <input id="dw" type="text"></label>
+<div class="vr"></div>
+<label><input type="checkbox" id="sn" checked>Snap</label>
+<label title="New boxes/walls overlap other walls instead of merging with them"><input type="checkbox" id="sp">Keep new walls separate</label>
+<label><input type="checkbox" id="dm" checked>Show lengths</label>
+<label title="Which line the wall length labels measure along"><select id="lm"><option value="out">Outer face</option><option value="ctr">Centre line</option><option value="in">Inner face</option><option value="both">Outer + Inner (both)</option></select></label>
 </div>
-<div id="main"><div id="cw"><canvas id="cv"></canvas><div id="ip"></div></div><div id="side"><div id="mvp"></div><div id="areas"></div></div></div>
+<div id="main">
+<nav id="pal" aria-label="Tools">
+<h6>Select</h6>
+<button class="pt on" data-t="select" title="Select and move walls, rooms and doors (V)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3l12 9-5.2 1.2L16 20l-2.6 1.1-3.2-6.6L6 18z"/></svg><span>Select</span><kbd>V</kbd></button>
+<button class="pt" data-t="multi" title="Multi-select: click walls or room labels to add or remove them, drag empty space to box-select (M)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="12" height="12" stroke-dasharray="3 2.2"/><path d="M13 12l7.5 3.2-3.2 1.2-1.2 3.2z"/></svg><span>Multi</span><kbd>M</kbd></button>
+<h6>Draw</h6>
+<button class="pt" data-t="box" title="Draw a room box (B)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="13" rx=".6"/></svg><span>Box</span><kbd>B</kbd></button><button class="pt" data-t="comp" title="Draw a compound / land boundary (C)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx=".6"/><rect x="7" y="8" width="10" height="8"/></svg><span>Compound</span><kbd>C</kbd></button><button class="pt" data-t="wall" title="Draw walls. Right-click ends the wall (W)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 18.5L19.5 5.5" stroke-width="3.6" stroke-linecap="butt"/></svg><span>Wall</span><kbd>W</kbd></button><button class="pt" data-t="door" title="Click on a wall to place a door. Double-click a door (Select tool) to set its length, swing side, hinge and open angle (D)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20.5h5M18.5 20.5H21"/><path d="M8 20.5V6.5"/><path d="M8 6.5A12.5 12.5 0 0 1 20.5 19" stroke-dasharray="2.6 2"/></svg><span>Door</span><kbd>D</kbd></button><button class="pt" data-t="origin" title="Click to set the 0,0 point of the rulers and X/Y values (O)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v5M12 16v5M3 12h5M16 12h5"/></svg><span>Origin</span><kbd>O</kbd></button>
+<h6>Edit</h6>
+<button class="pt" id="jn" title="Select one wall piece, then join it with the pieces on the same straight line (e.g. a wall cut by touching rooms) into ONE single wall (J)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h6M15 12h6"/><path d="M9 7.5L6.5 12 9 16.5M15 7.5l2.5 4.5-2.5 4.5"/></svg><span>Join walls</span><kbd>J</kbd></button><button class="pt" id="lk" title="Lock the selected rooms in place so they cannot be moved or deleted by accident (press again to unlock) (L)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>Lock</span><kbd>L</kbd></button><button class="pt danger" id="dl" title="Delete the selected wall piece, or the selected door (Delete)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"/></svg><span>Del wall</span><kbd>Del</kbd></button><button class="pt danger" id="dg" title="Delete the whole selected box / wall group (Shift+Delete) (Shift+Delete)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"/><path d="M10.2 11v6M13.8 11v6"/></svg><span>Del group</span><kbd>⇧Del</kbd></button>
+<h6>Rooms</h6>
+<button class="pt" id="mg" title="Walls shared by touching rooms become ONE single wall that belongs to no room (it can be moved or deleted on its own) (Alt+J)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v6.5M12 14.5V21M3 12h6.5M14.5 12H21"/></svg><span>Split walls</span><kbd>Alt+J</kbd></button><button class="pt" id="sa" title="Turn every closed area into its own independent room with its own closed walls, so each one can be moved separately (Alt+R)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="7.5" height="10" rx=".6"/><rect x="13.5" y="7" width="7.5" height="10" rx=".6"/></svg><span>Separate</span><kbd>Alt+R</kbd></button><label class="pck" title="Tick: Split / Separate only affect the rooms you have selected. Untick: they affect the whole drawing"><input type="checkbox" id="so"><span>Selected rooms only</span></label>
+</nav>
+<div id="cw"><canvas id="cv"></canvas><div id="ip"></div></div>
+<div id="side"><div id="mvp"></div><div id="areas"></div></div></div></div>
 <div id="st"></div><div id="ov"><div id="db"></div></div>
 <script>
 const U={ftin:{f:.3048,l:'ft',a:'sq ft'},ft:{f:.3048,l:'ft',a:'sq ft'},m:{f:1,l:'m',a:'sq m'}},RL=22;
@@ -411,7 +468,7 @@ function syncPanel(){const ip=$('ip'),bx=BDv();let m=null;
  ip.style.display='flex';const set=(id,v)=>{const el=$(id);if(el&&document.activeElement!==el&&el.dataset.d!=='1')el.value=v};
  if(m==='box'){$('ipn').textContent=bx.c?'Compound size':'Box size';set('ipw',FV(Math.abs(bx.b[0]-bx.a[0])));set('iph',FV(Math.abs(bx.b[1]-bx.a[1])))}
  else{const l=draft.pts[draft.pts.length-1],h=hover?hover[0]:l;set('ipl',FV(Math.hypot(h[0]-l[0],h[1]-l[1])));set('ipt',FV(draft.tk||S.tw));const pp=draft.pts.concat(hover?[hover[0]]:[]),tk2=draft.tk||S.tw,ll=pp.length>1?Math.hypot(pp[pp.length-1][0]-pp[pp.length-2][0],pp[pp.length-1][1]-pp[pp.length-2][1]):0;$('ipi').textContent=ll>1e-6?'this wall: outer '+LB(ll)+' · inner '+(ll-2*tk2>1e-6?LB(ll-2*tk2):'-'):'optional - or right-click / Enter = finish'}}
-function setTool(t){tool=t;draft=null;drag=null;BD=null;hover=null;GP=[];$('wlw').style.display=t==='wall'?'':'none';$('dww').style.display=t==='door'?'':'none';DH=null;document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));R()}
+function setTool(t){tool=t;draft=null;drag=null;BD=null;hover=null;GP=[];$('wlw').style.display=t==='wall'?'':'none';$('dww').style.display=t==='door'?'':'none';DH=null;document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));$('tn').textContent=({select:'Select',multi:'Multi-select',box:'Box',comp:'Compound',wall:'Wall',door:'Door',origin:'Set 0,0'})[t]||t;document.querySelectorAll('.o-draw').forEach(e=>e.style.display=(t==='box'||t==='comp'||t==='wall')?'':'none');R()}
 function offChain(p,o){const n=p.length,L=[];for(let i=0;i<n-1;i++){let dx=p[i+1][0]-p[i][0],dy=p[i+1][1]-p[i][1];const l=Math.hypot(dx,dy)||1e-9;dx/=l;dy/=l;L.push({p:[p[i][0]-dy*o[i],p[i][1]+dx*o[i]],d:[dx,dy],l})}
  return p.map((_,j)=>{if(j===0)return L[0].p;if(j===n-1){const A=L[n-2];return[A.p[0]+A.d[0]*A.l,A.p[1]+A.d[1]*A.l]}const A=L[j-1],B=L[j],c=crs(A.d,B.d);if(Math.abs(c)<1e-9)return B.p;const s=crs([B.p[0]-A.p[0],B.p[1]-A.p[1]],B.d)/c;return[A.p[0]+A.d[0]*s,A.p[1]+A.d[1]*s]})}
 function refToCenter(p,closed,th){const m=S.bm,h=(th||S.tw)/2;if(m==='ctr'||p.length<2)return p;
@@ -595,13 +652,19 @@ $('mm').onchange=e=>{MM=e.target.value;R()};$('mgo').onclick=applyMv;
 function delW(grp){delW0(grp);pruneDoors();R()}
 function doUndo(){if(!undo.length)return;const s=JSON.parse(undo.pop());S.walls=s.w;S.groups=s.g;S.origin=s.o;S.rooms=s.r||[];S.doors=s.d||[];selD=null;MS=new Set();draft=null;commit();R()}
 window.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
+ if(!e.ctrlKey&&!e.metaKey&&!draft&&!BD){const k=e.key.toLowerCase();
+  if(e.altKey&&e.code==='KeyJ'){e.preventDefault();$('mg').click();return}
+  if(e.altKey&&e.code==='KeyR'){e.preventDefault();$('sa').click();return}
+  if(!e.altKey&&k==='j'){e.preventDefault();$('jn').click();return}
+  if(!e.altKey&&k==='l'){e.preventDefault();$('lk').click();return}}
+ const TK={v:'select',m:'multi',b:'box',c:'comp',w:'wall',d:'door',o:'origin'};if(!draft&&!BD&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&TK[e.key.toLowerCase()]){e.preventDefault();setTool(TK[e.key.toLowerCase()]);return}
  if(tool==='wall'&&draft&&!e.ctrlKey&&!e.metaKey&&!e.altKey){
   if(e.key.length===1&&/[0-9.'"\u2032\u2033\u2019\u201d\sftinm-]/i.test(e.key)&&!(e.key===' '&&!draft.ty)){e.preventDefault();draft.ty+=e.key;R();return}
   if(e.key==='Backspace'&&draft.ty){e.preventDefault();draft.ty=draft.ty.slice(0,-1);R();return}
   if(e.key==='Enter'&&draft.ty){e.preventDefault();typedWall();return}}
  if((tool==='box'||tool==='comp')&&BD&&e.key==='Tab'){e.preventDefault();const f=$('ipw');if(f){f.focus();f.select()}return}
  if(tool==='wall'&&e.key==='Tab'){e.preventDefault();cycleWL();return}
- if(e.key===' '){space=true;e.preventDefault()}else if(e.key==='Delete'){if(selD!=null)delDoor();else delW(e.shiftKey)}
+ if(e.key===' '){space=true;e.preventDefault()}else if(e.key==='Delete'||(e.key==='Backspace'&&!draft&&!BD)){e.preventDefault();if(selD!=null)delDoor();else delW(e.shiftKey)}
  else if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo()}
  else if(e.key==='Escape'){draft=null;drag=null;setTool('select')}else if(e.key==='Enter'&&draft)finishWall(false);else if(e.key==='Enter'&&BD&&(tool==='box'||tool==='comp'))finishBox();
  else if(e.key==='Backspace'&&draft){draft.pts.pop();draft.jh.pop();if(!draft.pts.length)draft=null;R()}});
@@ -658,5 +721,5 @@ $('pdf').onclick=()=>dlg('Export PDF',[
  {id:'grid',l:'Include grid',t:'chk',v:XO.grid},{id:'list',l:'Add area list page',t:'chk',v:XO.list}],r=>{undo.pop();XO=r;setTimeout(()=>exportPDF(r),30)},
  '<div class="em" style="margin-top:4px">With a fixed scale, a drawing bigger than the page is cropped.</div>');
 let first=1;new ResizeObserver(()=>{dpr=window.devicePixelRatio||1;cv.width=Math.round(cv.clientWidth*dpr);cv.height=Math.round(cv.clientHeight*dpr);if(first){first=0;fit()}R()}).observe($('cw'));
-sync();
+sync();setTool('select');
 </script></body></html>
