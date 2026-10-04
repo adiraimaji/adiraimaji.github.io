@@ -340,7 +340,7 @@ function render(EX){
  if(sw_){cx.beginPath();path(wp(sw_));cx.strokeStyle=C('--sel');cx.lineWidth=2;cx.stroke()}
  DG.forEach(o=>drawDoor(cx,o.d,o.g,C,!EX&&o.d.id===selD,1));
  if(!EX&&tool==='door'&&DH){const g=doorGeom(DH);drawDoor(cx,DH,g,C,false,.55);cx.font='bold 11px system-ui';cx.textBaseline='middle';const q=w2s(g.c);halo(LB(DH.w)+' door · tap Shift to flip side / hinge',q[0]+12,q[1]-14,C,'left')}
- if(!EX&&selD!=null){const d=S.doors.find(x=>x.id===selD);if(d){const g=doorGeom(d),q=w2s(g.c);cx.font='bold 11px system-ui';cx.textBaseline='middle';halo('door '+LB(d.w)+' · double-click to edit',q[0]+12,q[1]-14,C,'left')}}
+ if(!EX&&selD!=null){const d=S.doors.find(x=>x.id===selD);if(d){const g=doorGeom(d),q=w2s(g.c);cx.font='bold 11px system-ui';cx.textBaseline='middle';halo('door '+LB(d.w)+' · Tab / tap Shift = flip · double-click to edit',q[0]+12,q[1]-14,C,'left')}}
  cx.font='11px system-ui';cx.textBaseline='middle';
  const PB=S.walls.map(wp),lm=S.lm||'out',OL=$('dm').checked&&lm!=='ctr'?outlineLens(PB):null;
  if($('dm').checked)S.walls.forEach((x,i)=>{const th=(x.fl+x.fr)*V.s,inset=Math.max(2.5,Math.min(5,th/4)),side=th<26;
@@ -443,6 +443,10 @@ function doorDlg(d){const g=doorGeom(d);if(g.host&&locked(g.host)){flash('Locked
   const a=parseFloat(r.a);if(isFinite(a))d.a=Math.max(0,Math.min(175,a))},
   '<button id="dd" style="width:100%;margin-top:4px">Delete this door</button>');
  $('dd').onclick=()=>{$('ov').style.display='none';delDoor()}}
+function cycleDoor(){const d=S.doors.find(x=>x.id===selD);if(!d)return;const g=doorGeom(d);if(g.host&&locked(g.host)){flash('Locked - unlock it first');return}
+ const L=[[1,'L'],[1,'R'],[-1,'L'],[-1,'R']],cur=L.findIndex(a=>a[0]===d.s&&a[1]===hingeSide(d,g)),nx=L[(cur+1)%4];push();d.s=nx[0];d.h=1;const g2=doorGeom(d);if(hingeSide(d,g2)!==nx[1])d.h=-1;commit();R();
+ const off=(d.s>0?g.fl:g.fr)+.4,p=[g.c[0]+g.n[0]*d.s*off,g.c[1]+g.n[1]*d.s*off],r=INFO.rooms.filter(r=>r.iA>0&&inP(p,r.poly)&&!r.hl.some(c=>inP(p,c.poly))).sort((a,b)=>a.A-b.A)[0];
+ flash('Door opens '+(r?'into '+r.name:'outward')+', hinge '+(nx[1]==='L'?'left':'right')+'  (Tab or tap Shift to change)')}
 function delDoor(){const d=S.doors.find(x=>x.id===selD);if(!d)return;push();S.doors=S.doors.filter(x=>x!==d);selD=null;commit();R()}
 const pruneDoors=()=>{S.doors=S.doors.filter(d=>doorGeom(d).host)};
 function setT(p,sg,nt,mode){const c=sg>0?'fl':'fr',o=sg>0?'fr':'fl';if(mode==='this')p[c]=Math.max(.002,nt-p[o]);else if(mode==='other')p[o]=Math.max(.002,nt-p[c]);else{const d=(nt-p.fl-p.fr)/2;p.fl=Math.max(.001,p.fl+d);p.fr=Math.max(.001,p.fr+d)}}
@@ -665,6 +669,7 @@ let SHT=0,SHU=false;
 function tapShift(){
  if(tool==='wall'&&draft){cycleWL();updWL();const o=$('wl').selectedOptions[0];flash('Wall line: '+(o?o.text:S.wl))}
  else if((tool==='box'||tool==='comp')&&BDv()&&BDv().b){S.bm=({in:'out',out:'ctr',ctr:'in'})[S.bm||'in'];$('bm').value=S.bm;commit();R();flash('Draw size = '+$('bm').selectedOptions[0].text)}
+ else if(selD!=null&&tool==='select')cycleDoor();
  else if(tool==='door'){DS=(DS+1)&3;R();flash('Door opens '+(DS&1?'the other way':'the default way')+', hinge '+(DS&2?'on the other side':'on the default side')+'  (tap Shift again to change)')}}
 window.addEventListener('keydown',e=>{if(e.key==='Shift'){if(!e.repeat){SHT=Date.now();SHU=false}}else if(SHT)SHU=true},true);
 window.addEventListener('keyup',e=>{if(e.key==='Shift'){const tap=SHT&&!SHU&&Date.now()-SHT<400;SHT=0;if(tap&&!/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))tapShift()}},true);
@@ -682,6 +687,7 @@ window.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.t
   if(e.key==='Enter'&&draft.ty){e.preventDefault();typedWall();return}}
  if((tool==='box'||tool==='comp')&&BD&&e.key==='Tab'){e.preventDefault();const f=$('ipw');if(f){f.focus();f.select()}return}
  if(tool==='wall'&&e.key==='Tab'){e.preventDefault();cycleWL();return}
+ if(selD!=null&&tool==='select'&&e.key==='Tab'){e.preventDefault();cycleDoor();return}
  if(e.key===' '){space=true;e.preventDefault()}else if(e.key==='Delete'||(e.key==='Backspace'&&!draft&&!BD)){e.preventDefault();if(selD!=null)delDoor();else delW(e.shiftKey)}
  else if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo()}
  else if(e.key==='Escape'){draft=null;drag=null;setTool('select')}else if(e.key==='Enter'&&draft)finishWall(false);else if(e.key==='Enter'&&BD&&(tool==='box'||tool==='comp'))finishBox();
