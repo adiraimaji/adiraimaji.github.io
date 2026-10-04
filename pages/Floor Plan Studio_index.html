@@ -24,7 +24,8 @@ label{display:flex;align-items:center;gap:6px;color:var(--cm);white-space:nowrap
 .seg{display:flex}.seg button{border-radius:0;margin-left:-1px;min-width:30px}.seg button:first-child{border-radius:4px 0 0 4px;margin:0}.seg button:last-child{border-radius:0 4px 4px 0}
 .vr{width:1px;height:22px;background:var(--c3)}
 /* options bar: settings of the active tool */
-#ob{display:flex;align-items:center;gap:14px;min-height:36px;padding:3px 12px;background:var(--c2);border-bottom:1px solid #111;flex:none;flex-wrap:wrap}
+#ob{display:flex;align-items:center;gap:14px;height:40px;padding:0 12px;background:var(--c2);border-bottom:1px solid #111;flex:none;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden}
+#ob>*{flex:none}#wl{width:230px}#bm{width:112px}#lm{width:150px}
 #tn{font-weight:600;color:#fff;background:var(--c0);border:1px solid var(--c3);border-radius:4px;padding:3px 10px;min-width:70px;text-align:center}
 .o-draw{display:flex;align-items:center;gap:14px}
 /* tool palette (left) */
@@ -107,7 +108,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;displa
 const U={ftin:{f:.3048,l:'ft',a:'sq ft'},ft:{f:.3048,l:'ft',a:'sq ft'},m:{f:1,l:'m',a:'sq m'}},RL=22;
 let S={unit:'ftin',sheet:[30.48,18.288],walls:[],groups:{},rooms:[],doors:[],did:0,dw:.9144,nid:1,gid:1,tw:.2286,bm:'in',lm:'both',wl:'ctr',origin:[0,0]};
 try{const j=JSON.parse(localStorage.getItem('fp2'));if(j&&j.walls)S=Object.assign(S,j)}catch(e){}
-let JP=[],JC=[],EQ=null,LASTO=null,BD=null,selD=null,DH=null;
+let JP=[],JC=[],EQ=null,LASTO=null,BD=null,selD=null,DH=null,DS=0;
 // face the new wall starts from when drawn in direction n*s (it starts on the opposite face and runs through the host)
 const cellFace=(c,s)=>{const dx=c.n[0]*s,dy=c.n[1]*s;return Math.abs(dy)>=Math.abs(dx)?(dy>0?'top':'bottom'):(dx>0?'left':'right')};
 const cellStart=(c,s)=>{const o=s>0?-c.fr:c.fl;return[c.p[0]+c.n[0]*o,c.p[1]+c.n[1]*o]};
@@ -244,7 +245,7 @@ const PAL={'--bg':'#fff','--pn':'#fff','--tx':'#1d1d1b','--mu':'#6b6a63','--bd':
 // (neighbouring walls' collinear end faces continue it) and stops where another wall's body covers it.
 function outlineLens(PB){const E=1e-5,A=P=>{let a=0;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];a+=p[0]*q[1]-q[0]*p[1]}return a};
  const sgn=PB.map(P=>A(P)>=0?1:-1);
- const faceLen=(P0,P1,self)=>{const dx=P1[0]-P0[0],dy=P1[1]-P0[1],L=Math.hypot(dx,dy);if(L<E)return L;const ux=dx/L,uy=dy/L,tt=p=>(p[0]-P0[0])*ux+(p[1]-P0[1])*uy,dd=p=>Math.abs((p[0]-P0[0])*uy-(p[1]-P0[1])*ux);
+ const faceLen=(P0,P1,self)=>{const dx=P1[0]-P0[0],dy=P1[1]-P0[1],L=Math.hypot(dx,dy);if(L<E)return{len:L,a:P0,b:P1};const ux=dx/L,uy=dy/L,tt=p=>(p[0]-P0[0])*ux+(p[1]-P0[1])*uy,dd=p=>Math.abs((p[0]-P0[0])*uy-(p[1]-P0[1])*ux);
   let bnd=[[0,L]];const cov=[];
   PB.forEach((Q,j)=>{if(j===self)return;const n=Q.length;
    for(let k=0;k<n;k++){const a=Q[k],b=Q[(k+1)%n];if(dd(a)<E&&dd(b)<E){const t1=tt(a),t2=tt(b);bnd.push([Math.min(t1,t2),Math.max(t1,t2)])}}
@@ -254,8 +255,8 @@ function outlineLens(PB){const E=1e-5,A=P=>{let a=0;for(let i=0;i<P.length;i++){
    if(ok&&hi-lo>E){const m=(lo+hi)/2,p=[P0[0]+ux*m,P0[1]+uy*m];if(ins.every(([nx,ny,a])=>(p[0]-a[0])*nx+(p[1]-a[1])*ny>E))cov.push([lo,hi])}});
   bnd.sort((a,b)=>a[0]-b[0]);let mg=[];bnd.forEach(r=>{const l=mg[mg.length-1];if(l&&r[0]<=l[1]+E)l[1]=Math.max(l[1],r[1]);else mg.push(r.slice())});
   cov.forEach(([c0,c1])=>{const nx=[];mg.forEach(([s,e])=>{if(c1<=s+E||c0>=e-E)nx.push([s,e]);else{if(c0>s+E)nx.push([s,c0]);if(c1<e-E)nx.push([c1,e])}});mg=nx});
-  const hit=mg.find(([s,e])=>L/2>=s-E&&L/2<=e+E);return hit?hit[1]-hit[0]:L};
- return PB.map((P,i)=>{const a=faceLen(P[0],P[1],i),b=faceLen(P[3],P[2],i);return{out:Math.max(a,b),in:Math.min(a,b)}})}
+  const hit=mg.find(([s,e])=>L/2>=s-E&&L/2<=e+E),s0=hit?hit[0]:0,e0=hit?hit[1]:L;return{len:e0-s0,a:[P0[0]+ux*s0,P0[1]+uy*s0],b:[P0[0]+ux*e0,P0[1]+uy*e0]}};
+ return PB.map((P,i)=>{const a=faceLen(P[0],P[1],i),b=faceLen(P[3],P[2],i),nx=P[0][0]-P[3][0],ny=P[0][1]-P[3][1],nl=Math.hypot(nx,ny)||1;a.inN=[-nx/nl,-ny/nl];b.inN=[nx/nl,ny/nl];return a.len>=b.len?{out:a,in:b}:{out:b,in:a}})}
 // ---- doors: an opening in a wall with a leaf and its swing arc. Only the drawing is cut - wall areas stay unchanged.
 function doorGeom(d){const gm=S.groups[d.g],sx=gm?(gm.dx||0)-(d.dx0||0):0,sy=gm?(gm.dy||0)-(d.dy0||0):0,u=d.u;let host=null,bd=1e9,c=[d.c[0]+sx,d.c[1]+sy];
  for(const cc of(sx||sy?[c,d.c]:[c])){c=cc;S.walls.forEach(w=>{const ex=w.bx-w.ax,ey=w.by-w.ay,l=Math.hypot(ex,ey);if(l<1e-9)return;const ux=ex/l,uy=ey/l;if(Math.abs(ux*u[1]-uy*u[0])>1e-6)return;
@@ -273,7 +274,7 @@ function hitDoor(w){for(let i=S.doors.length-1;i>=0;i--){const d=S.doors[i],g=do
 function newDoor(h){const wl=h.w,half=Math.min(S.dw/2,h.l/2),fl=10/V.s;let t=Math.max(half,Math.min(h.l-half,h.t));
  if(Math.abs(t-h.l/2)<fl)t=h.l/2;else if(t-half<fl)t=half;else if(h.l-half-t<fl)t=h.l-half;
  const u=[h.ux,h.uy],gm=S.groups[wl.g]||{},d={id:++S.did,c:[wl.ax+u[0]*t,wl.ay+u[1]*t],u,s:h.sg,h:1,w:S.dw,a:90,tk:wl.fl+wl.fr,g:wl.g,dx0:gm.dx||0,dy0:gm.dy||0};
- const g=doorGeom(d);d.h=((g.u[0]*(-g.n[0]*d.s)*0)+1);if(hingeSide(d,g)!=='L')d.h=-1;return d}
+ if(DS&1)d.s=-d.s;const g=doorGeom(d),want=(DS&2)?'R':'L';d.h=1;if(hingeSide(d,g)!==want)d.h=-1;return d}
 function drawDoor(cx,d,g,C,sel,alpha){const L=doorLeaf(d,g),hw=g.w/2,col=sel?C('--sel'):C('--tx');cx.save();cx.globalAlpha=alpha||1;
  const j=(sg)=>{const a=w2s([g.c[0]+g.u[0]*hw*sg+g.n[0]*g.fl,g.c[1]+g.u[1]*hw*sg+g.n[1]*g.fl]),b=w2s([g.c[0]+g.u[0]*hw*sg-g.n[0]*g.fr,g.c[1]+g.u[1]*hw*sg-g.n[1]*g.fr]);cx.moveTo(a[0],a[1]);cx.lineTo(b[0],b[1])};
  cx.strokeStyle=col;cx.lineWidth=2;cx.beginPath();j(1);j(-1);cx.stroke();
@@ -281,6 +282,13 @@ function drawDoor(cx,d,g,C,sel,alpha){const L=doorLeaf(d,g),hw=g.w/2,col=sel?C('
  if(d.a>1){const a0=Math.atan2(L.cl[1],L.cl[0]),a1=Math.atan2(L.od[1],L.od[0]);cx.setLineDash([5,4]);cx.lineWidth=1.2;cx.beginPath();cx.arc(h[0],h[1],r,a0,a1,(L.cl[0]*L.od[1]-L.cl[1]*L.od[0])<0);cx.stroke();cx.setLineDash([])}
  cx.lineWidth=Math.max(2.5,.05*V.s);cx.lineCap='butt';cx.beginPath();cx.moveTo(h[0],h[1]);cx.lineTo(t[0],t[1]);cx.stroke();
  cx.fillStyle=col;cx.beginPath();cx.arc(h[0],h[1],Math.max(2.5,.03*V.s),0,7);cx.fill();cx.restore()}
+// CAD-style dimension: a line along a wall face (drawn just inside the wall) with end ticks and the length in a gap in the middle
+function dimLine(a,b,inN,txt,inset,shift){const A=w2s(a),B=w2s(b),dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy);if(L<44)return;
+ const ux=dx/L,uy=dy/L,P=[A[0]+inN[0]*inset,A[1]+inN[1]*inset],Q=[B[0]+inN[0]*inset,B[1]+inN[1]*inset];
+ cx.save();cx.font='bold 10px system-ui';const tw=cx.measureText(txt).width,gap=tw/2+5,mid=L/2+(shift||0),g0=Math.max(0,mid-gap),g1=Math.min(L,mid+gap);
+ const at=t=>[P[0]+ux*t,P[1]+uy*t],tk=(t)=>{const c=at(t);cx.moveTo(c[0]-uy*4,c[1]+ux*4);cx.lineTo(c[0]+uy*4,c[1]-ux*4)},ln=()=>{cx.beginPath();if(g0>6){const p=at(0),q=at(g0);cx.moveTo(p[0],p[1]);cx.lineTo(q[0],q[1])}if(L-g1>6){const p=at(g1),q=at(L);cx.moveTo(p[0],p[1]);cx.lineTo(q[0],q[1])}tk(0);tk(L)};
+ cx.lineCap='round';ln();cx.strokeStyle='rgba(0,0,0,.6)';cx.lineWidth=3.2;cx.stroke();ln();cx.strokeStyle='#fff';cx.lineWidth=1.1;cx.stroke();
+ let ang=Math.atan2(dy,dx);if(ang>Math.PI/2||ang<-Math.PI/2)ang+=Math.PI;const m=at(mid);cx.translate(m[0],m[1]);cx.rotate(ang);cx.textAlign='center';cx.textBaseline='middle';cx.lineJoin='round';cx.lineWidth=3.2;cx.strokeStyle='rgba(0,0,0,.75)';cx.strokeText(txt,0,0);cx.fillStyle='#fff';cx.fillText(txt,0,0);cx.restore()}
 function render(EX){
  if(!EX&&tool==='wall')updWL();
  const w=EX?EX.w:cv.clientWidth,h=EX?EX.h:cv.clientHeight,st=getComputedStyle(document.documentElement),C=n=>EX?PAL[n]:st.getPropertyValue(n).trim(),f=FM(),[ox,oy]=S.origin,cx0=cx;
@@ -331,14 +339,15 @@ function render(EX){
  const sw_=selW();
  if(sw_){cx.beginPath();path(wp(sw_));cx.strokeStyle=C('--sel');cx.lineWidth=2;cx.stroke()}
  DG.forEach(o=>drawDoor(cx,o.d,o.g,C,!EX&&o.d.id===selD,1));
- if(!EX&&tool==='door'&&DH){const g=doorGeom(DH);drawDoor(cx,DH,g,C,false,.55);cx.font='bold 11px system-ui';cx.textBaseline='middle';const q=w2s(g.c);halo(LB(DH.w)+' door',q[0]+12,q[1]-14,C,'left')}
+ if(!EX&&tool==='door'&&DH){const g=doorGeom(DH);drawDoor(cx,DH,g,C,false,.55);cx.font='bold 11px system-ui';cx.textBaseline='middle';const q=w2s(g.c);halo(LB(DH.w)+' door · tap Shift to flip side / hinge',q[0]+12,q[1]-14,C,'left')}
  if(!EX&&selD!=null){const d=S.doors.find(x=>x.id===selD);if(d){const g=doorGeom(d),q=w2s(g.c);cx.font='bold 11px system-ui';cx.textBaseline='middle';halo('door '+LB(d.w)+' · double-click to edit',q[0]+12,q[1]-14,C,'left')}}
  cx.font='11px system-ui';cx.textBaseline='middle';
- const PB=S.walls.map(wp),OL=$('dm').checked&&S.lm!=='ctr'?outlineLens(PB):null;
- if($('dm').checked)S.walls.forEach((x,i)=>{const cl=Math.hypot(x.bx-x.ax,x.by-x.ay);if(cl*V.s<60)return;const m=w2s([(x.ax+x.bx)/2,(x.ay+x.by)/2]),e=OL?OL[i]:null,lm=S.lm||'out';
-  if(!e)halo(LB(cl),m[0],m[1],C);
-  else if(lm==='both'){const hz=Math.abs(x.bx-x.ax)>=Math.abs(x.by-x.ay),dy=hz?7:0,dx=hz?0:26;halo('out '+LB(e.out),m[0]+dx,m[1]-dy,C);halo('in '+LB(e.in),m[0]+dx,m[1]+dy+(hz?0:14),C)}
-  else halo(LB(lm==='in'?e.in:e.out),m[0],m[1],C)});
+ const PB=S.walls.map(wp),lm=S.lm||'out',OL=$('dm').checked&&lm!=='ctr'?outlineLens(PB):null;
+ if($('dm').checked)S.walls.forEach((x,i)=>{const th=(x.fl+x.fr)*V.s,inset=Math.max(2.5,Math.min(5,th/4)),side=th<26;
+  if(lm==='ctr'){dimLine([x.ax,x.ay],[x.bx,x.by],[0,0],LB(Math.hypot(x.bx-x.ax,x.by-x.ay)),0,0);return}
+  const e=OL[i],both=lm==='both',sh=side&&both?38:0;
+  if(lm!=='in')dimLine(e.out.a,e.out.b,e.out.inN,LB(e.out.len),inset,-sh);
+  if(lm!=='out')dimLine(e.in.a,e.in.b,e.in.inN,LB(e.in.len),inset,sh)});
  cx.font='bold 12px system-ui';
  const QD=S.walls.map(x=>qd(x,0,0));
  rooms.forEach(r=>{if(!r.ip)return;const xs=r.poly.map(p=>p[0]),ys=r.poly.map(p=>p[1]);if((Math.max(...xs)-Math.min(...xs))*V.s<28||(Math.max(...ys)-Math.min(...ys))*V.s<18)return;
@@ -651,6 +660,15 @@ $('mm').onchange=e=>{MM=e.target.value;R()};$('mgo').onclick=applyMv;
 [$('mx'),$('my')].forEach(el=>el.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();applyMv()}});
 function delW(grp){delW0(grp);pruneDoors();R()}
 function doUndo(){if(!undo.length)return;const s=JSON.parse(undo.pop());S.walls=s.w;S.groups=s.g;S.origin=s.o;S.rooms=s.r||[];S.doors=s.d||[];selD=null;MS=new Set();draft=null;commit();R()}
+// tap Shift (press and release, nothing else) while an object is still being drawn: cycle its main property
+let SHT=0,SHU=false;
+function tapShift(){
+ if(tool==='wall'&&draft){cycleWL();updWL();const o=$('wl').selectedOptions[0];flash('Wall line: '+(o?o.text:S.wl))}
+ else if((tool==='box'||tool==='comp')&&BDv()&&BDv().b){S.bm=({in:'out',out:'ctr',ctr:'in'})[S.bm||'in'];$('bm').value=S.bm;commit();R();flash('Draw size = '+$('bm').selectedOptions[0].text)}
+ else if(tool==='door'){DS=(DS+1)&3;R();flash('Door opens '+(DS&1?'the other way':'the default way')+', hinge '+(DS&2?'on the other side':'on the default side')+'  (tap Shift again to change)')}}
+window.addEventListener('keydown',e=>{if(e.key==='Shift'){if(!e.repeat){SHT=Date.now();SHU=false}}else if(SHT)SHU=true},true);
+window.addEventListener('keyup',e=>{if(e.key==='Shift'){const tap=SHT&&!SHU&&Date.now()-SHT<400;SHT=0;if(tap&&!/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))tapShift()}},true);
+cv.addEventListener('pointerdown',()=>{SHU=true},true);
 window.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
  if(!e.ctrlKey&&!e.metaKey&&!draft&&!BD){const k=e.key.toLowerCase();
   if(e.altKey&&e.code==='KeyJ'){e.preventDefault();$('mg').click();return}
